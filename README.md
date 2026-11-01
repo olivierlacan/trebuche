@@ -135,7 +135,7 @@ and on demand from the Actions tab. One-time setup: in the repository's **Settin
 Pages**, set **Source** to **GitHub Actions**.
 
 The daily run means a pink "ongoing" ring can appear as soon as SDOT dates new work.
-The committed `docs/data.js` is only a snapshot for local use; the published site always
+The committed `docs/seattle/phinney-ridge/data.js` is only a snapshot for local use; the published site always
 uses freshly fetched data. If a source is down, that day's deploy fails and the previous
 version stays up.
 
