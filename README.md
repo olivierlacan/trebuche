@@ -4,12 +4,13 @@ Finding missing curb ramps along **Dayton Ave N, Seattle (N 60th – N 85th St, 
 so neighbors can file SDOT curb ramp requests, starting with stroller access.
 
 ```
-python3 scripts/fetch.py    # download all sources into data/raw/  (~1 min)
-python3 scripts/build.py    # write output/corners.csv, corners.geojson, map.html
+ruby scripts/fetch.rb    # download all sources into data/raw/  (~1 min)
+ruby scripts/build.rb    # write output/corners.csv, corners.geojson, map.html
 open output/map.html
 ```
 
-Standard library Python 3 only, no installs.
+Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`,
+`osm`) refreshes a single source.
 
 ## Outputs
 
@@ -17,11 +18,23 @@ Standard library Python 3 only, no installs.
 |---|---|
 | `output/corners.csv` | One row per corner: overall status, per-source verdicts, city install date, evidence IDs |
 | `output/corners.geojson` | Same rows as points |
-| `output/map.html` | Self-contained Leaflet map (data embedded). Tap a corner for per-source detail |
+| `output/map.html` | Self-contained Leaflet map (data embedded). Tap a marker for per-source detail |
 
-Map colors: **green** = ramp present, **red** = missing, **orange** = partial (one of
-the corner's two crossings has no ramp), **gray** = sources conflict (dashed) or unknown,
-**blue ring** = an SDOT request has been filed.
+### Reading the map
+
+Color shows **when SDOT installed the ramp**, so install campaigns show up as patches
+of one color. Ramps installed in the last month are **green**; the color shades
+through **yellow** at one year old to **brown** for the oldest installs (2008). Gray
+means SDOT has no install date, which is true for more than half of the ramps.
+
+| Marker | Meaning |
+|---|---|
+| filled circle | Corner has a ramp for both crossings (colored by install date) |
+| circle with small × | Ramp for one crossing only. The other crossing still has no ramp |
+| black **X** | No ramp, and at least two sources agree |
+| **?** | Not sure: only one source says missing, sources conflict, or no data |
+| blue ring | An SDOT request has been filed (from `data/requests.csv`) |
+| small dots | Every SDOT ramp in the area, by install date (can be turned off in the legend) |
 
 ## Data sources
 
@@ -36,9 +49,14 @@ the corner's two crossings has no ramp), **gray** = sources conflict (dashed) or
 
 **Intersections** come from OSM street geometry. Many Dayton intersections have traffic
 circles, where the street ways stop short of the center, so intersections are found
-by latitude rather than shared nodes. Dayton **jogs at 64th and 65th**. Each jog is
-split into two T-intersections (`64W`/`64E`, `65W`/`65E`), and the corners a T lacks
-are kept as "T-intersection landings" (they only need the ramp for crossing Dayton).
+by latitude rather than shared nodes.
+
+Dayton **jogs** at 64th and 65th. A jog is where a street doesn't continue straight
+through an intersection: Dayton south of 64th is about 35 m west of Dayton north of
+64th, so you turn onto 64th for a few seconds to keep going north on Dayton. The same
+thing happens again, offset about 20 m, at 65th. Each jog is two T-intersections
+(`64W`/`64E`, `65W`/`65E`). The side of a T with no street still gets a marker, called a
+"T-intersection landing", because it only needs the ramp for crossing Dayton.
 
 **Per-crossing coverage.** A full corner needs two ramps: one for crossing Dayton
 (`main`) and one for crossing the side street (`cross`). A SHARED (diagonal) ramp
@@ -60,6 +78,10 @@ city's latest install/verify date is newer than the other sources' observations
 flagged `sources_disagree`. If every source says something is lacking but they disagree
 on how much, the result is `partial`. Anything else is `conflict`.
 
+**Confirmed missing** (black X) means at least two sources independently say there's no
+ramp. SDOT has no explicit `NORAMP` records on Dayton, so in practice that's Project
+Sidewalk plus OSM.
+
 **Matching.** Evidence within 30 m of an intersection center is assigned to the nearest
 intersection, then to a quadrant.
 
@@ -76,7 +98,7 @@ intersection, then to a quadrant.
 ## Tracking SDOT requests
 
 Add a row to `data/requests.csv` when a neighbor files a request, then re-run
-`build.py`. The corner shows a blue ring on the map, and the CSV gains
+`build.rb`. The corner shows a blue ring on the map, and the CSV gains
 `request_*` columns.
 
 ```

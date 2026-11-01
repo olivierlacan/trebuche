@@ -8,43 +8,114 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root {
-    --bg: #fff; --fg: #1d1d1f; --muted: #666; --panel: rgba(255,255,255,.95); --border: #ddd;
-    --present: #1a9850; --missing: #d73027; --partial: #f28e2b; --unknown: #9e9e9e;
+    --bg: #fff; --fg: #1d1d1f; --muted: #666; --panel: rgba(255,255,255,.96); --border: #ddd;
   }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #161616; --fg: #eee; --muted: #aaa; --panel: rgba(30,30,30,.95); --border: #444; }
+    :root:not([data-theme="light"]) { --bg: #161616; --fg: #eee; --muted: #aaa; --panel: rgba(30,30,30,.96); --border: #444; }
   }
-  :root[data-theme="dark"] { --bg: #161616; --fg: #eee; --muted: #aaa; --panel: rgba(30,30,30,.95); --border: #444; }
+  :root[data-theme="dark"] { --bg: #161616; --fg: #eee; --muted: #aaa; --panel: rgba(30,30,30,.96); --border: #444; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
     font: 14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; }
   #map { position: absolute; inset: 0; }
   .panel { background: var(--panel); color: var(--fg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 12px; max-width: 260px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
-  .panel h1 { font-size: 15px; margin: 0 0 4px; display: inline; }
+    border-radius: 8px; padding: 10px 12px; width: 250px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  .panel h1 { font-size: 15px; margin: 0; display: inline; }
   .panel summary { cursor: pointer; margin-bottom: 4px; }
   .panel p { margin: 4px 0; color: var(--muted); font-size: 12px; }
-  .legend div { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
-  .sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 2px solid #fff; box-shadow: 0 0 0 1px #0004; }
-  .ring { box-shadow: 0 0 0 2px #2b6cb0; }
-  .counts { font-variant-numeric: tabular-nums; }
+  .panel h2 { font-size: 11px; margin: 10px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .key { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-variant-numeric: tabular-nums; }
+  .key svg { flex: none; }
+  .ramp-bar { height: 10px; border-radius: 5px; margin: 4px 0 2px; }
+  .ramp-ticks { display: grid; grid-template-columns: 1fr 1fr 1fr; font-size: 11px; color: var(--muted); }
+  .ramp-ticks span:nth-child(2) { text-align: center; }
+  .ramp-ticks span:nth-child(3) { text-align: right; }
+  .panel label { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-top: 8px; cursor: pointer; }
+  .leaflet-div-icon.m { background: none; border: none; }
   .leaflet-popup-content { font-size: 13px; min-width: 230px; }
   .leaflet-popup-content table { border-collapse: collapse; width: 100%; }
   .leaflet-popup-content td { padding: 2px 4px; vertical-align: top; border-top: 1px solid #eee; }
   .leaflet-popup-content td:first-child { font-weight: 600; white-space: nowrap; }
-  .tag { display: inline-block; padding: 0 6px; border-radius: 10px; color: #fff; font-size: 12px; }
-  @media (max-width: 500px) { .panel { max-width: 180px; font-size: 12px; } }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 10px; color: #fff; font-size: 12px; background: #999; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <script>
 const DATA = /*__DATA__*/null;
-const COLORS = { present: "var(--present)", missing: "var(--missing)", partial: "var(--partial)",
-                 conflict: "var(--unknown)", unknown: "var(--unknown)" };
-const HEX = { present: "#1a9850", missing: "#d73027", partial: "#f28e2b", conflict: "#9e9e9e", unknown: "#9e9e9e" };
-const LABEL = { present: "Ramp present", missing: "Ramp missing", partial: "Partial (one direction missing)",
-                conflict: "Sources conflict", unknown: "Unknown" };
 
+// ------------------------------------------------------------ install-date colors
+// Green for the last ~month, shading to yellow at one year old, then to brown
+// at the oldest install in the data. Ages are measured from today.
+const DAY = 864e5;
+const today = Date.now();
+const GREEN = [26, 152, 80], YELLOW = [240, 200, 20], BROWN = [110, 62, 20];
+const NO_DATE = "#c8c8c8";
+const rgb = c => `rgb(${c.join(",")})`;
+const mix = (a, b, t) => rgb(a.map((v, i) => Math.round(v + (b[i] - v) * Math.min(1, Math.max(0, t)))));
+
+const allDates = DATA.city_ramps.map(r => r.installed).filter(Boolean);
+const oldest = allDates.reduce((a, b) => (a < b ? a : b));
+const oldestAge = Math.max(730, (today - Date.parse(oldest)) / DAY);
+
+function dateColor(iso) {
+  if (!iso) return NO_DATE;
+  const age = (today - Date.parse(iso)) / DAY;
+  if (age <= 30) return rgb(GREEN);
+  if (age <= 365) return mix(GREEN, YELLOW, (age - 30) / 335);
+  return mix(YELLOW, BROWN, (age - 365) / (oldestAge - 365));
+}
+function ageText(iso) {
+  if (!iso) return "install date not recorded";
+  const days = Math.round((today - Date.parse(iso)) / DAY);
+  if (days < 60) return `installed ${iso} (${days} days ago)`;
+  if (days < 730) return `installed ${iso} (${Math.round(days / 30.4)} months ago)`;
+  return `installed ${iso} (${Math.round(days / 365.25)} years ago)`;
+}
+
+// ------------------------------------------------------------ marker shapes
+// ramp     filled circle, colored by SDOT install date
+// partial  same circle with a small black x: one of the two crossings has no ramp
+// x        black X: no ramp, 2+ sources agree
+// q        ?: only one source says missing, sources conflict, or no data
+const confirmedMissing = p =>
+  p.overall === "missing" && ["city", "ps", "osm"].filter(s => p[s] === "missing").length >= 2;
+
+function kind(p) {
+  if (confirmedMissing(p)) return "x";
+  if (p.overall === "present") return "ramp";
+  if (p.overall === "partial") return "partial";
+  return "q";
+}
+
+function svgFor(k, color, s, ring) {
+  const r = s / 2;
+  const open = `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" aria-hidden="true">`;
+  const ringEl = ring ? `<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="none" stroke="#2b6cb0" stroke-width="3"/>` : "";
+  const cross = (inset, w, halo) => {
+    const a = s * inset, b = s * (1 - inset);
+    const d = `M${a},${a}L${b},${b}M${b},${a}L${a},${b}`;
+    return (halo ? `<path d="${d}" stroke="#fff" stroke-width="${w + 3}" stroke-linecap="round"/>` : "") +
+      `<path d="${d}" stroke="#000" stroke-width="${w}" stroke-linecap="round"/>`;
+  };
+  if (k === "x") return `${open}${ringEl}${cross(0.2, Math.max(3, s * 0.17), true)}</svg>`;
+  if (k === "q") {
+    return `${open}<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="#fff" stroke="${ring ? "#2b6cb0" : "#555"}" stroke-width="${ring ? 3 : 1.5}"/>
+      <text x="${r}" y="${r}" dy=".36em" text-anchor="middle" font-size="${s * 0.62}" font-weight="700"
+        font-family="system-ui, sans-serif" fill="#333">?</text></svg>`;
+  }
+  const circle = `<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${color}" stroke="${ring ? "#2b6cb0" : "#fff"}" stroke-width="${ring ? 3 : 2}"/>`;
+  return `${open}${circle}${k === "partial" ? cross(0.33, Math.max(2, s * 0.12), false) : ""}</svg>`;
+}
+
+const sizeFor = z => (z >= 19 ? 26 : z >= 18 ? 20 : z >= 17 ? 15 : 11);
+function iconFor(p, z) {
+  const s = sizeFor(z) - (p.corner_type === "corner" ? 0 : 3);
+  return L.divIcon({ className: "m", html: svgFor(kind(p), dateColor(p.city_install_date), s, !!p.request_filed),
+                     iconSize: [s, s], iconAnchor: [s / 2, s / 2], popupAnchor: [0, -s / 2] });
+}
+
+// ------------------------------------------------------------ map
 const map = L.map("map");
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 20, maxNativeZoom: 19,
@@ -53,15 +124,18 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const tag = v => `<span class="tag" style="background:${HEX[v] || "#9e9e9e"}">${esc(v)}</span>`;
+const STATUS_HEX = { present: "#1a9850", partial: "#c2701f", missing: "#222", conflict: "#777" };
+const tag = v => `<span class="tag" style="background:${STATUS_HEX[v] || "#999"}">${esc(v)}</span>`;
 
 function popup(p) {
+  const covers = p.city_covers
+    ? ` covers ${p.city_covers.split("+").map(c => (c === "main" ? "crossing Dayton" : "crossing side street")).join(" + ")}` : "";
   const rows = [
-    ["Overall", tag(p.overall) + (p.sources_disagree ? " ⚠ sources disagree" : "")],
+    ["Overall", tag(p.overall) + (confirmedMissing(p) ? " 2+ sources agree" : "") +
+      (p.sources_disagree ? "<br>⚠ sources disagree" : "")],
     p.note && ["Note", esc(p.note)],
-    ["City (SDOT)", tag(p.city) +
-      (p.city_covers ? ` covers ${p.city_covers.split("+").map(c => c === "main" ? "crossing Dayton" : "crossing side street").join(" + ")}` : "") +
-      (p.city_install_date ? `<br>installed ${esc(p.city_install_date)}` : "") +
+    ["City (SDOT)", tag(p.city) + covers +
+      (p.city_ramp_count ? `<br><span class="dot" style="background:${dateColor(p.city_install_date)}"></span> ${ageText(p.city_install_date)}` : "") +
       (p.city_condition ? `, condition ${esc(p.city_condition)}` : "") +
       (p.city_placeholder_count ? `<br>${p.city_placeholder_count} unassessed placeholder record(s)` : "") +
       (p.city_planned_project ? `<br>planned: ${esc(p.city_planned_project)}` : "")],
@@ -78,40 +152,58 @@ function popup(p) {
     `<p style="margin:6px 0 0;color:#888;font-size:11px">${esc(p.corner_id)}</p>`;
 }
 
-const markers = [];
-const radiusFor = (z, corner) => (z >= 19 ? 10 : z >= 18 ? 8 : z >= 17 ? 6 : 4) - (corner ? 0 : 1);
-const counts = {};
-for (const f of DATA.features) {
-  const p = f.properties;
-  counts[p.overall] = (counts[p.overall] || 0) + 1;
-  const [lon, lat] = f.geometry.coordinates;
-  const m = L.circleMarker([lat, lon], {
-    radius: radiusFor(17, p.corner_type === "corner"),
-    color: p.request_filed ? "#2b6cb0" : "#fff",
-    weight: p.request_filed ? 3 : 2,
-    fillColor: HEX[p.overall], fillOpacity: 0.95,
-    dashArray: p.overall === "conflict" ? "3 3" : null,
-  }).addTo(map).bindPopup(popup(p));
-  m.isCorner = p.corner_type === "corner";
-  markers.push(m);
-}
-const resize = () => markers.forEach(m => m.setRadius(radiusFor(map.getZoom(), m.isCorner)));
-map.on("zoomend", resize);
+// Background: every built SDOT ramp in the area, colored by install date, so
+// install campaigns show up as patches of the same color. Newest drawn on top.
+const cityLayer = L.layerGroup(DATA.city_ramps
+  .slice().sort((a, b) => (a.installed || "").localeCompare(b.installed || ""))
+  .map(r => L.circleMarker([r.lat, r.lon], {
+    radius: 4, weight: 1, color: "#0006", fillColor: dateColor(r.installed), fillOpacity: r.installed ? 0.9 : 0.5,
+  }).bindPopup(`<strong>${esc(r.id)}</strong><br>${esc(r.desc)}<br>` +
+               `<span class="dot" style="background:${dateColor(r.installed)}"></span> ${ageText(r.installed)}` +
+               (r.condition ? `<br>condition ${esc(r.condition)}` : ""))));
+cityLayer.addTo(map);
 
+const counts = { x: 0, q: 0, ramp: 0, partial: 0 };
+const markers = DATA.features.map(f => {
+  const p = f.properties;
+  counts[kind(p)]++;
+  const [lon, lat] = f.geometry.coordinates;
+  return L.marker([lat, lon], { icon: iconFor(p, 17), zIndexOffset: 1000 }).addTo(map).bindPopup(popup(p));
+});
+const refresh = () => markers.forEach((m, i) => m.setIcon(iconFor(DATA.features[i].properties, map.getZoom())));
+map.on("zoomend", refresh);
 map.fitBounds(L.latLngBounds(DATA.features.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]])), { padding: [20, 20] });
-resize();
+refresh();
+
+// ------------------------------------------------------------ legend
+// The bar is not to scale: the left half is the last year, the right half
+// everything older, so recent installs get room.
+const gradient = `linear-gradient(to right, ${rgb(GREEN)} 0%, ${rgb(GREEN)} ${30 / 365 * 50}%, ` +
+  `${rgb(YELLOW)} 50%, ${rgb(BROWN)} 100%)`;
+const key = (k, color, label) => `<div class="key">${svgFor(k, color, 16, false)}<span>${label}</span></div>`;
+const midColor = mix(GREEN, YELLOW, 0.5);
 
 const info = L.control({ position: "topright" });
 info.onAdd = () => {
-  const d = L.DomUtil.create("details", "panel legend");
+  const d = L.DomUtil.create("details", "panel");
   d.open = window.innerWidth > 600;
-  const f = DATA.metadata.fetched;
-  d.innerHTML = `<summary><h1>Dayton Ave N curb ramps</h1></summary><p>N 60th – N 85th St, Phinney Ridge</p>` +
-    ["present", "missing", "partial", "conflict", "unknown"].map(k =>
-      `<div class="counts"><span class="sw" style="background:${HEX[k]}"></span>${LABEL[k]} (${counts[k] || 0})</div>`).join("") +
-    `<div><span class="sw ring" style="background:#fff"></span>SDOT request filed</div>` +
-    `<p>Data fetched ${esc((f.city || "").slice(0, 10))}. Tap a corner for per-source detail.</p>`;
+  d.innerHTML = `<summary><h1>Dayton Ave N curb ramps</h1></summary>
+    <p>N 60th – N 85th St, Phinney Ridge. Tap any marker for details.</p>
+    <h2>SDOT ramp install date</h2>
+    <div class="ramp-bar" style="background:${gradient}"></div>
+    <div class="ramp-ticks"><span>now</span><span>1 year</span><span>${new Date(oldest).getUTCFullYear()}</span></div>
+    ${key("ramp", NO_DATE, "date not recorded")}
+    <h2>Dayton corners</h2>
+    ${key("ramp", midColor, `ramp for both crossings (${counts.ramp})`)}
+    ${key("partial", midColor, `ramp for one crossing only (${counts.partial})`)}
+    ${key("x", null, `no ramp, 2+ sources agree (${counts.x})`)}
+    ${key("q", null, `not sure (${counts.q})`)}
+    <div class="key"><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="#2b6cb0" stroke-width="3"/></svg><span>SDOT request filed</span></div>
+    <label><input type="checkbox" id="cityToggle" checked> All SDOT ramps nearby (small dots)</label>
+    <p>Data fetched ${esc((DATA.metadata.fetched.city || "").slice(0, 10))}.</p>`;
   L.DomEvent.disableClickPropagation(d);
+  d.querySelector("#cityToggle").addEventListener("change", e =>
+    e.target.checked ? cityLayer.addTo(map) : map.removeLayer(cityLayer));
   return d;
 };
 info.addTo(map);
