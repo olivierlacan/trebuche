@@ -4,123 +4,147 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dayton Ave Curb Ramps</title>
-<meta name="description" content="Which street corners on Dayton Ave N (N 60th to N 85th St, Seattle) are missing curb ramps, and how neighbors can ask the city to fix them.">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css">
+<meta name="description" content="A neighborhood effort to find every missing curb ramp on Dayton Ave N between N 60th and N 85th St in Seattle's Phinney Ridge, and get them built.">
+<script>
+  // Links shared before the map moved to map.html: forward map parameters there.
+  if (/[?&](corner|sel|lat|lng|z|tab)=/.test(location.search)) location.replace("map.html" + location.search + location.hash);
+</script>
+<link rel="stylesheet" href="landing.css">
 </head>
 <body>
-<header class="top">
-  <div>
-    <h1>Dayton Ave N curb ramps</h1>
-    <p>N 60th to N 85th St, Phinney Ridge, Seattle</p>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Phinney Ridge, Seattle</p>
+    <h1>Curb ramps for every corner of Dayton&nbsp;Ave&nbsp;N</h1>
+    <p class="lede">Walk Dayton between N 60th and N 85th St with a stroller, a wheelchair, a walker or a cart,
+      and you'll hit a curb with no ramp at almost every block. This is a neighborhood effort to find
+      every missing ramp, show the evidence, and ask the city to build them.</p>
+    <div class="ctas">
+      <a class="btn primary" href="map.html">Open the map</a>
+      <a class="btn" href="map.html?tab=request">How to request a ramp</a>
+    </div>
   </div>
 </header>
 
-<main class="layout">
-  <div id="map" role="application" aria-label="Map of Dayton Ave N corners and their curb ramps"></div>
+<main>
+  <section class="wrap stats" aria-labelledby="now-h">
+    <h2 id="now-h">Where things stand</h2>
+    <p class="section-lede" id="stats-lede">Every corner along the 25 blocks, checked against three public datasets.</p>
+    <div class="stat-grid" id="stat-grid"></div>
+  </section>
 
-  <aside class="panel">
-    <nav class="tabs" role="tablist" aria-label="Panels">
-      <button role="tab" id="tab-key" aria-controls="pane-key" data-tab="key">Key</button>
-      <button role="tab" id="tab-corner" aria-controls="pane-corner" data-tab="corner">Corner</button>
-      <button role="tab" id="tab-request" aria-controls="pane-request" data-tab="request">How to request</button>
-      <button role="tab" id="tab-group" aria-controls="pane-group" data-tab="group">Group <span class="count" id="sel-count" hidden></span></button>
-      <button role="tab" id="tab-list" aria-controls="pane-list" data-tab="list">All corners</button>
-    </nav>
+  <section class="wrap" aria-labelledby="glance-h">
+    <h2 id="glance-h">The street at a glance</h2>
+    <p class="section-lede">Each column is one intersection on Dayton, south (N 60th) to north (N 85th).
+      Its four marks are the four corners, laid out as on a map: north on top. Select any corner to open it.</p>
+    <div class="strip-scroll" tabindex="0" aria-label="Corners of Dayton Ave N, scrollable">
+      <div class="strip" id="strip"></div>
+    </div>
+    <p class="swipe-hint small" aria-hidden="true">Swipe sideways to see all intersections →</p>
+    <ul class="legend" id="legend"></ul>
+  </section>
 
-    <!-- Key -->
-    <section role="tabpanel" id="pane-key" aria-labelledby="tab-key">
-      <p class="lede">Each marker is one corner where a sidewalk meets Dayton Ave N. Tap one to see
-        what we know about it and how to ask the city for a curb ramp.</p>
-      <h2>Corners</h2>
-      <ul class="key" id="key-corners"></ul>
-      <h2>Ramp age (SDOT install date)</h2>
-      <div class="ramp-bar" id="ramp-bar"></div>
-      <div class="ramp-ticks"><span>now</span><span>1 year</span><span id="oldest-year"></span></div>
-      <ul class="key" id="key-age"></ul>
-      <h2>City work</h2>
-      <ul class="key" id="key-work"></ul>
-      <h2>Layers</h2>
-      <label class="check"><input type="checkbox" id="layer-ramps" checked> Every SDOT ramp nearby, by age</label>
-      <label class="check"><input type="checkbox" id="layer-work" checked> SDOT curb ramp work orders nearby</label>
-      <p class="small" id="data-dates"></p>
-      <p class="small">Sources: <a href="https://www.arcgis.com/home/item.html?id=28b3f55be93645888724bf61cd5e6ae8">SDOT curb ramp inventory</a> and <a href="https://www.arcgis.com/home/item.html?id=14712cda97f94213866863d67c05ef6b">work orders</a>,
-        <a href="https://sidewalk-sea.cs.washington.edu/">Project Sidewalk</a> (University of Washington volunteers labeling street imagery), and
-        <a href="https://www.openstreetmap.org/">OpenStreetMap</a>. Download everything as a
-        <a href="corners.csv" download>spreadsheet (CSV)</a>.</p>
-    </section>
+  <section class="wrap" aria-labelledby="goals-h">
+    <h2 id="goals-h">Our goals</h2>
+    <p class="section-lede">The end goal is simple: <strong>every corner on Dayton Ave N from N 60th to N 85th St has a curb ramp for both crossings.</strong> Getting there takes four steps.</p>
+    <ol class="goals">
+      <li>
+        <h3>Know exactly what's missing</h3>
+        <p>Not just "this intersection is bad," but which corner, and which of its two crossings has no ramp,
+          backed by public data anyone can check. The data refreshes every day.</p>
+      </li>
+      <li>
+        <h3>Restart work the city already planned</h3>
+        <p id="goal-onhold">Some Dayton ramps have been in an SDOT project marked "on hold" since 2022.
+          Asking the city to finish what it started is the quickest win.</p>
+      </li>
+      <li>
+        <h3>Ask together, and ask well</h3>
+        <p>Complete, evidence-backed requests through the right city channel, split the way SDOT's forms
+          require, plus one letter that many households can sign.</p>
+      </li>
+      <li>
+        <h3>Track it in the open</h3>
+        <p>Show what's been requested, what the city has planned, what's being built this week, and what's
+          done, so neighbors can follow up instead of starting over.</p>
+      </li>
+    </ol>
+  </section>
 
-    <!-- Selected corner -->
-    <section role="tabpanel" id="pane-corner" aria-labelledby="tab-corner" hidden>
-      <div id="corner-detail"><p class="lede">Tap a corner on the map, or pick one from <button class="link" data-goto="list">All corners</button>.</p></div>
-    </section>
+  <section class="wrap" aria-labelledby="help-h">
+    <h2 id="help-h">How you can help</h2>
+    <div class="cards">
+      <article class="card">
+        <span class="num">1</span>
+        <h3>Find your corners</h3>
+        <p>Open the map, or stand on a corner and tap the locate button. Each corner shows what's missing and how sure we are.</p>
+        <a href="map.html">Open the map →</a>
+      </article>
+      <article class="card">
+        <span class="num">2</span>
+        <h3>File a request</h3>
+        <p><strong>If you have a disability, or care for someone who does:</strong> use SDOT's Curb Ramp Request form.
+          <strong>Everyone else:</strong> send a general request to the Customer Service Bureau. Every corner has copy-ready request text.</p>
+        <a href="map.html?tab=request">Which form do I use? →</a>
+      </article>
+      <article class="card">
+        <span class="num">3</span>
+        <h3>Join the group request</h3>
+        <p>The map groups corners into ready-to-file packets and drafts a neighborhood letter to SDOT and our councilmember.</p>
+        <a href="map.html?tab=group">Build a group request →</a>
+      </article>
+      <article class="card">
+        <span class="num">4</span>
+        <h3>Say what you filed</h3>
+        <p>Log it with the date and tracking number (no personal details), so nobody files duplicates and we can follow up together.</p>
+        <a href="https://github.com/olivierlacan/trebuche/issues/new?labels=request-filed&amp;title=Request%20filed">Log a request →</a>
+      </article>
+    </div>
+  </section>
 
-    <!-- How to request -->
-    <section role="tabpanel" id="pane-request" aria-labelledby="tab-request" hidden>
-      <p class="lede">Seattle has two ways in. Which one fits depends on who's asking.</p>
+  <section class="wrap" aria-labelledby="how-h">
+    <h2 id="how-h">Why combine three sources</h2>
+    <p class="section-lede">No single public source gets Dayton right. Putting them side by side, corner by corner, shows where each one is wrong.</p>
+    <div class="cards three">
+      <article class="card">
+        <h3>SDOT's curb ramp inventory</h3>
+        <p>The city's record of every ramp, with install dates and planned work. It's silent where no ramp was ever recorded,
+          and its public maps draw unbuilt placeholder records at N 79th St as if they were ramps.</p>
+      </article>
+      <article class="card">
+        <h3>Project Sidewalk</h3>
+        <p>University of Washington volunteers labeling street-level imagery. It catches missing ramps the city never logged,
+          but its photos are mostly from 2018–2022, so it misses ramps built since, like N 63rd St in August 2026.</p>
+      </article>
+      <article class="card">
+        <h3>OpenStreetMap</h3>
+        <p>Community map data, including whether each crossing's curb is raised or lowered.
+          It tells us which crossing at a corner lacks a ramp.</p>
+      </article>
+    </div>
+    <p class="small">A corner gets a black X only when at least two sources agree it has no ramp.
+      Where they disagree, the map says so, and the more recent observation wins when dates make that clear.</p>
+  </section>
 
-      <h2>If you have a disability, or directly care for someone who does</h2>
-      <p>Use SDOT's <strong>Curb Ramp Request</strong> form. This is the city's ADA program, and it
-        builds ramps that people with disabilities ask for at places not already scheduled.</p>
-      <ul>
-        <li>Each form can cover ramps at <strong>no more than two intersections</strong>. There's no limit on how many forms you send.</li>
-        <li>SDOT sends a first response within 15 days of verifying the request, and preliminary project scoping within 30 days.</li>
-        <li>Questions: <a href="mailto:DOT_ADAProgram@seattle.gov">DOT_ADAProgram@seattle.gov</a>, (206) 386-1055, or toll-free (833) 414-5871.</li>
-      </ul>
-      <p><a class="button primary" href="https://forms.office.com/g/R2d2GXDbXu" target="_blank" rel="noopener">Open the SDOT Curb Ramp Request form</a></p>
-      <p class="small">From SDOT's <a href="https://www.seattle.gov/transportation/projects-and-programs/programs/ada-program/make-an-ada-request">Make an ADA Infrastructure Request</a> page.</p>
-
-      <h2>Everyone else (strollers, carts, bikes, getting older)</h2>
-      <p>The ADA form is reserved for disability access, so send a general request to the city's
-        Customer Service Bureau, which routes it to SDOT.</p>
-      <ul>
-        <li>In the <a href="https://www.seattle.gov/customer-service-bureau/find-it-fix-it-mobile-app">Find It, Fix It app</a>, choose <strong>General Inquiry – Customer Service Bureau</strong>. There's no curb ramp category.</li>
-        <li>Or use the <a href="https://seattle-cwiprod.motorolasolutions.com/">online request portal</a> (same categories, no app needed).</li>
-      </ul>
-
-      <h2>What to include</h2>
-      <p>Every corner on this map has a <strong>Copy request text</strong> button. It writes out the exact
-        location, which crossing needs a ramp, and the evidence, plus a link back to that corner on this map.
-        Paste it into the form, then attach a photo if you can.</p>
-
-      <h2>After you file</h2>
-      <p>Save your confirmation or tracking number and <a href="#" data-action="log-request">tell the group</a>
-        so we don't file duplicates and can follow up together. Please don't share your phone or email there.</p>
-    </section>
-
-    <!-- Group requests -->
-    <section role="tabpanel" id="pane-group" aria-labelledby="tab-group" hidden>
-      <p class="lede">Ask together. Pick corners, and this page splits them into ready-to-file
-        packets of two intersections each (SDOT's limit per form) and drafts a neighborhood letter.</p>
-      <div class="buttons">
-        <button class="button" data-select="confirmed">Select all confirmed missing</button>
-        <button class="button" data-select="needs">Select everything that needs a ramp</button>
-        <button class="button" data-select="none">Clear</button>
-      </div>
-      <p class="small">Or use <strong>Add to group request</strong> on any corner.</p>
-      <div id="group-body"></div>
-
-      <h2>More ways to push as a group</h2>
-      <ul>
-        <li><strong>Split the packets.</strong> Neighbors with a disability (or caregivers) each file one packet on the ADA form. Everyone else sends the letter through the Customer Service Bureau.</li>
-        <li><strong>Write your councilmember.</strong> Look up your district on the city's <a href="https://www.seattle.gov/neighborhoods/neighborhood-districts">neighborhoods and council districts</a> page, then send the letter below. One letter signed by many households carries more weight than many separate notes.</li>
-        <li><strong>Speak at a public meeting.</strong> SDOT's <a href="https://www.seattle.gov/transportation/projects-and-programs/programs/ada-program/pedestrian-access-advisory-committee">Pedestrian Access Advisory Committee</a> and the <a href="https://www.seattle.gov/seattle-pedestrian-advisory-board">Seattle Pedestrian Advisory Board</a> take public comment.</li>
-        <li id="on-hold-tip"></li>
-      </ul>
-    </section>
-
-    <!-- List -->
-    <section role="tabpanel" id="pane-list" aria-labelledby="tab-list" hidden>
-      <p class="lede">Every corner, south to north. Select one to show it on the map.</p>
-      <div id="corner-list"></div>
-    </section>
-  </aside>
+  <section class="wrap" aria-labelledby="who-h">
+    <h2 id="who-h">About this project</h2>
+    <p>Started by neighbors on Phinney Ridge. It isn't affiliated with the City of Seattle, and filing through this site
+      isn't a substitute for filing with the city: every request still goes through SDOT's own channels.</p>
+    <p>Everything is open: the <a href="https://github.com/olivierlacan/trebuche">code and method on GitHub</a>,
+      and the full corner-by-corner data as a <a href="corners.csv" download>spreadsheet (CSV)</a>.
+      <span id="refreshed"></span></p>
+  </section>
 </main>
 
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<footer class="foot">
+  <div class="wrap">
+    <a class="btn primary" href="map.html">Open the map</a>
+    <p class="small">Data: SDOT curb ramp inventory and work orders, Project Sidewalk (University of Washington), © OpenStreetMap contributors.</p>
+  </div>
+</footer>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="data.js"></script>
-<script src="app.js"></script>
+<script src="landing.js"></script>
 </body>
 </html>

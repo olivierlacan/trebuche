@@ -8,7 +8,7 @@ so neighbors can file SDOT curb ramp requests, starting with stroller access.
 ```
 ruby scripts/fetch.rb    # download all sources into data/raw/  (~1 min)
 ruby scripts/build.rb    # write output/corners.csv + .geojson and docs/data.js
-open docs/index.html     # works straight from disk
+open docs/index.html     # landing page; the map is docs/map.html (both work from disk)
 ```
 
 Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`,
@@ -18,13 +18,20 @@ Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`
 
 | File | What |
 |---|---|
-| `docs/` | The website: `index.html`, `style.css`, `app.js` (hand-written), `data.js` and `corners.csv` (generated) |
+| `docs/` | The website. Hand-written: `index.html` + `landing.css` + `landing.js` (landing page), `map.html` + `style.css` + `app.js` (map). Generated: `data.js`, `corners.csv` |
 | `output/corners.csv` | One row per corner: overall status, which crossings lack a ramp, per-source verdicts, city install date, SDOT work orders, evidence IDs |
 | `output/corners.geojson` | Same rows as points |
 
 ## The website
 
-A static Leaflet map plus a side panel (below the map on phones):
+**Landing page** (`index.html`): what the project is for and its goals, live counts of
+missing and partial corners, a strip showing every corner from 60th to 85th (each links
+into the map), how neighbors can help, and why the site combines three sources. Its
+numbers come from the same `data.js` as the map, so they update with the daily refresh.
+Links with map parameters to the old address (`/?corner=61-NE`) are forwarded to
+`map.html`, so links shared before the landing page existed still work.
+
+**Map** (`map.html`): a static Leaflet map plus a side panel (below the map on phones):
 
 - **Key:** what the markers mean, and layer toggles.
 - **Corner:** everything known about one corner, with **Copy request text** (location,
@@ -51,7 +58,7 @@ points (SDOT ramp records and OSM kerb nodes) for that corner, so they land on t
 
 | Parameter | Example | Effect |
 |---|---|---|
-| `corner` | `?corner=61-NE` | Opens that corner and zooms to it |
+| `corner` | `map.html?corner=61-NE` | Opens that corner and zooms to it |
 | `lat`, `lng`, `z` | `?lat=47.66683&lng=-122.35565&z=21` | Map center and zoom (1–21) |
 | `sel` | `?sel=79-NE,79-NW,64W-SW` | Corners in the group request |
 | `tab` | `?tab=group` | Which panel is open: `key`, `corner`, `request`, `group`, `list` |
