@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dayton Ave N curb ramps: a person walking down a curb ramp">
+  <!-- Side elevation of a sidewalk, an exaggerated curb ramp and the street,
+       with a pedestrian heading down the ramp. Colors match the site. -->
+  <defs><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
+  <g clip-path="url(#badge)">
+    <rect width="64" height="64" fill="#1f2a24"/>
+    <!-- sidewalk (left), ramp, street (right) -->
+    <path d="M0 32H16L44 52H64V64H0Z" fill="#f4c542"/>
+    <!-- detectable-warning bumps near the foot of the ramp -->
+    <g fill="#f4c542"><circle cx="36.6" cy="46.7" r="1.05"/><circle cx="39.4" cy="48.7" r="1.05"/><circle cx="42.2" cy="50.7" r="1.05"/></g>
+    <!-- walker: back leg bent on higher ground, front leg reaching down the slope -->
+    <g stroke="#f4f1ea" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M29 29L31.6 19.6"/>
+      <path d="M29 29L26.2 33.6L23.4 35.4"/>
+      <path d="M29 29L31.7 35.6L33 42.2"/>
+      <path d="M31.2 21.6L27.3 26.8"/>
+      <path d="M31.2 21.6L36 25.6"/>
+    </g>
+    <circle cx="33" cy="14.2" r="4" fill="#f4f1ea"/>
+  </g>
+</svg>

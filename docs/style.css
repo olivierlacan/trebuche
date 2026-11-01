@@ -138,3 +138,6 @@ pre.request {
 }
 .home-link { color: inherit; text-decoration: none; }
 .home-link:hover { text-decoration: underline; }
+.top { display: flex; align-items: center; gap: 10px; }
+.top-logo { flex: none; display: block; line-height: 0; }
+.top-logo img { border-radius: 8px; }
