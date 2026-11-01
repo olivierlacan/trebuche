@@ -176,12 +176,19 @@ const state = {
   tab: params.get("tab") || (params.get("corner") ? "corner" : params.get("sel") ? "group" : "key"),
 };
 
+// GPS state (see "GPS: center on me" below); declared early because writeUrl reads it.
+const gps = { watch: null, following: false, moving: false, layer: null, button: null };
+
 function writeUrl() {
   const p = new URLSearchParams();
-  const c = map.getCenter();
-  p.set("lat", c.lat.toFixed(5));
-  p.set("lng", c.lng.toFixed(5));
-  p.set("z", map.getZoom());
+  // While following GPS, the map center is the visitor's location: keep it
+  // out of the address bar so a copied link doesn't reveal where they are.
+  if (!gps.following) {
+    const c = map.getCenter();
+    p.set("lat", c.lat.toFixed(5));
+    p.set("lng", c.lng.toFixed(5));
+    p.set("z", map.getZoom());
+  }
   if (state.corner) p.set("corner", shortId(state.corner));
   if (state.selected.size) p.set("sel", selParam(state.selected));
   if (state.tab && state.tab !== "key") p.set("tab", state.tab);
@@ -595,6 +602,111 @@ document.getElementById("corner-list").addEventListener("click", e => {
 document.querySelector('[data-action="log-request"]').addEventListener("click", e => {
   e.preventDefault();
   window.open(issueUrl(state.corner ? [byId.get(state.corner)] : selectedCorners()), "_blank", "noopener");
+});
+
+// ------------------------------------------------------------------ GPS: center on me
+// Uses the browser's location only on request. Nothing is stored or sent.
+function gpsStop(msg) {
+  if (gps.watch != null) navigator.geolocation.clearWatch(gps.watch);
+  gps.watch = null;
+  gps.following = false;
+  gps.layer.clearLayers();
+  gps.button.classList.remove("on");
+  gps.button.setAttribute("aria-pressed", "false");
+  document.getElementById("gps-status").hidden = true;
+  if (msg) toast(msg);
+  writeUrl();
+}
+
+function nearestCorner(lat, lng) {
+  let best = null, bestD = Infinity;
+  for (const c of corners) {
+    const d = map.distance([lat, lng], [c.lat, c.lon]);
+    if (d < bestD) { best = c; bestD = d; }
+  }
+  return [best, bestD];
+}
+
+function gpsUpdate(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  gps.layer.clearLayers();
+  L.circle([lat, lng], { radius: accuracy, color: "#1a73e8", weight: 1, fillOpacity: 0.12, interactive: false }).addTo(gps.layer);
+  L.circleMarker([lat, lng], { radius: 7, color: "#fff", weight: 3, fillColor: "#1a73e8", fillOpacity: 1, interactive: false }).addTo(gps.layer);
+  if (gps.following) {
+    gps.moving = true;
+    map.setView([lat, lng], Math.max(map.getZoom(), 19));
+    gps.moving = false;
+  }
+  const [c, d] = nearestCorner(lat, lng);
+  const el = document.getElementById("gps-status");
+  el.hidden = false;
+  const feet = d * 3.28084;
+  el.innerHTML = feet < 1500
+    ? `Nearest corner: <button class="link" data-gps-corner="${esc(c.corner_id)}">${esc(cornerTitle(c))}</button>, about ${Math.round(feet / 10) * 10} ft away` +
+      (accuracy > 30 ? ` <span class="small">(location accurate to ~${Math.round(accuracy * 3.28084)} ft)</span>` : "")
+    : `You're about ${(d / 1609.34).toFixed(1)} miles from the nearest Dayton Ave N corner on this map.`;
+}
+
+gps.layer = L.layerGroup().addTo(map);
+const GpsStatus = L.Control.extend({
+  options: { position: "bottomleft" },
+  onAdd() {
+    const el = L.DomUtil.create("div", "gps-status");
+    el.id = "gps-status";
+    el.hidden = true;
+    el.setAttribute("role", "status");
+    L.DomEvent.disableClickPropagation(el);
+    return el;
+  },
+});
+map.addControl(new GpsStatus());
+const GpsControl = L.Control.extend({
+  options: { position: "topleft" },
+  onAdd() {
+    const wrap = L.DomUtil.create("div", "leaflet-bar");
+    const b = L.DomUtil.create("a", "gps-button", wrap);
+    b.href = "#";
+    b.setAttribute("role", "button");
+    b.setAttribute("aria-pressed", "false");
+    b.title = "Show my location";
+    b.setAttribute("aria-label", "Show my location");
+    b.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+    L.DomEvent.disableClickPropagation(wrap);
+    L.DomEvent.on(b, "click", e => {
+      L.DomEvent.preventDefault(e);
+      if (!("geolocation" in navigator)) return toast("This browser can't share your location");
+      if (gps.watch != null && gps.following) return gpsStop("Stopped showing your location");
+      if (gps.watch != null) { gps.following = true; b.classList.add("on"); writeUrl(); toast("Following your location"); return; }
+      gps.following = true;
+      b.classList.add("on");
+      b.setAttribute("aria-pressed", "true");
+      toast("Finding you…");
+      gps.watch = navigator.geolocation.watchPosition(gpsUpdate, err => {
+        gpsStop(err.code === err.PERMISSION_DENIED
+          ? "Location is blocked. Allow it for this site in your browser settings."
+          : "Couldn't get your location. Try again outdoors or with Wi-Fi on.");
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+    });
+    gps.button = b;
+    return wrap;
+  },
+});
+map.addControl(new GpsControl());
+// Dragging the map yourself stops following (the dot stays). Tap the button to re-center.
+map.on("dragstart", () => {
+  if (gps.following && !gps.moving) {
+    gps.following = false;
+    gps.button.classList.remove("on");
+    writeUrl();
+  }
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-gps-corner]");
+  if (b) {
+    gps.following = false;
+    gps.button.classList.remove("on");
+    selectCorner(b.dataset.gpsCorner);
+  }
 });
 
 // ------------------------------------------------------------------ boot

@@ -37,6 +37,12 @@ A static Leaflet map plus a side panel (below the map on phones):
 - **All corners:** every corner as a list, south to north. It doubles as a non-map way to
   browse.
 
+The **locate button** (under the zoom buttons) uses the browser's GPS to show your
+position, keep the map centered on you, and name the nearest Dayton corner with a link
+to open it. It only asks for location when tapped. Your position is never stored or
+sent anywhere, and it stays out of the address bar while the map follows you. Dragging
+the map stops following; tapping the button again stops location entirely.
+
 The map zooms to level 21. OSM tiles stop at 19 and are scaled up past that, which is
 enough to pick out a single curb. Corner markers sit at the average of the mapped curb
 points (SDOT ramp records and OSM kerb nodes) for that corner, so they land on the curb.
