@@ -137,3 +137,7 @@ h3 { font-size: 18px; margin: 0 0 6px; line-height: 1.3; }
 .steps li strong { display: block; }
 .prose { max-width: 44em; }
 .prose p { margin: 0 0 14px; }
+
+/* Home page name + tagline */
+.hero h1.site-name { font-size: clamp(44px, 9vw, 84px); margin: 0 0 6px; letter-spacing: -.03em; }
+.tagline { font-size: clamp(22px, 3.4vw, 32px); line-height: 1.2; font-weight: 600; color: #f4c542; margin: 0 0 20px; max-width: 22em; }
