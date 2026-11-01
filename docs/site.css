@@ -115,3 +115,25 @@ h3 { font-size: 18px; margin: 0 0 6px; line-height: 1.3; }
 .hero-logo { display: block; width: 72px; height: 72px; margin: 0 0 18px; border-radius: 16px; box-shadow: 0 0 0 1px rgba(244, 241, 234, .18); }
 .foot-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-bottom: 18px; }
 .foot-brand img { border-radius: 9px; }
+
+/* Breadcrumbs (on dark hero) */
+.crumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--hero-muted); margin: 0 0 12px; }
+.crumbs a { color: var(--hero-fg); text-decoration: none; border-bottom: 1px solid rgba(244, 241, 234, .35); }
+.crumbs a:hover { border-bottom-color: currentColor; }
+.crumbs [aria-current] { color: var(--hero-muted); }
+
+/* Area cards (home and city pages) */
+.areas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.area { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 6px; }
+.area:hover { border-color: var(--muted); }
+.area .where { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.area h3 { font-size: 20px; margin: 0; }
+.area .counts { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); margin-top: 4px; }
+.area .counts strong { color: var(--fg); font-variant-numeric: tabular-nums; }
+.area .go { margin-top: 8px; font-weight: 600; color: var(--accent); }
+.area.soon { border-style: dashed; background: transparent; }
+.steps { padding-left: 22px; margin: 0; }
+.steps li { margin: 0 0 10px; }
+.steps li strong { display: block; }
+.prose { max-width: 44em; }
+.prose p { margin: 0 0 14px; }

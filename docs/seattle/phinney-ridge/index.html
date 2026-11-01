@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dayton Ave Curb Ramps</title>
+<meta name="description" content="A neighborhood effort to find every missing curb ramp on Dayton Ave N between N 60th and N 85th St in Seattle's Phinney Ridge, and get them built.">
+<link rel="icon" href="../../logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a24">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Curb ramps for every corner of Dayton Ave N">
+<meta property="og:description" content="Find the missing curb ramps on Dayton Ave N (N 60th to N 85th St, Phinney Ridge) and ask the city together.">
+<meta property="og:url" content="https://olivierlacan.github.io/trebuche/seattle/phinney-ridge/">
+<meta property="og:image" content="https://olivierlacan.github.io/trebuche/seattle/phinney-ridge/og.png">
+<meta property="og:image:alt" content="Logo of a person walking down a curb ramp, with the words: Curb ramps for every corner of Dayton Ave N">
+<meta name="twitter:card" content="summary_large_image">
+<script>
+  // Links shared before the map moved to map.html: forward map parameters there.
+  if (/[?&](corner|sel|lat|lng|z|tab)=/.test(location.search)) location.replace("map.html" + location.search + location.hash);
+</script>
+<link rel="stylesheet" href="../../site.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <a href="../../" aria-label="Trebuche home"><img class="hero-logo" src="../../logo.svg" width="72" height="72" alt=""></a>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Trebuche</a><span aria-hidden="true">›</span><a href="../">Seattle</a><span aria-hidden="true">›</span><span aria-current="page">Phinney Ridge</span></nav>
+    <h1>Curb ramps for every corner of Dayton&nbsp;Ave&nbsp;N</h1>
+    <p class="lede">Walk Dayton between N 60th and N 85th St with a stroller, a wheelchair, a walker or a cart,
+      and you'll hit a curb with no ramp at almost every block. This is a neighborhood effort to find
+      every missing ramp, show the evidence, and ask the city to build them.</p>
+    <div class="ctas">
+      <a class="btn primary" href="map.html">Open the map</a>
+      <a class="btn" href="map.html?tab=request">How to request a ramp</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="wrap stats" aria-labelledby="now-h">
+    <h2 id="now-h">Where things stand</h2>
+    <p class="section-lede" id="stats-lede">Every corner along the 25 blocks, checked against three public datasets.</p>
+    <div class="stat-grid" id="stat-grid"></div>
+  </section>
+
+  <section class="wrap" aria-labelledby="glance-h">
+    <h2 id="glance-h">The street at a glance</h2>
+    <p class="section-lede">Each column is one intersection on Dayton, south (N 60th) to north (N 85th).
+      Its four marks are the four corners, laid out as on a map: north on top. Select any corner to open it.</p>
+    <div class="strip-scroll" tabindex="0" aria-label="Corners of Dayton Ave N, scrollable">
+      <div class="strip" id="strip"></div>
+    </div>
+    <p class="swipe-hint small" aria-hidden="true">Swipe sideways to see all intersections →</p>
+    <ul class="legend" id="legend"></ul>
+  </section>
+
+  <section class="wrap" aria-labelledby="goals-h">
+    <h2 id="goals-h">Our goals</h2>
+    <p class="section-lede">The end goal is simple: <strong>every corner on Dayton Ave N from N 60th to N 85th St has a curb ramp for both crossings.</strong> Getting there takes four steps.</p>
+    <ol class="goals">
+      <li>
+        <h3>Know exactly what's missing</h3>
+        <p>Not just "this intersection is bad," but which corner, and which of its two crossings has no ramp,
+          backed by public data anyone can check. The data refreshes every day.</p>
+      </li>
+      <li>
+        <h3>Restart work the city already planned</h3>
+        <p id="goal-onhold">Some Dayton ramps have been in an SDOT project marked "on hold" since 2022.
+          Asking the city to finish what it started is the quickest win.</p>
+      </li>
+      <li>
+        <h3>Ask together, and ask well</h3>
+        <p>Complete, evidence-backed requests through the right city channel, split the way SDOT's forms
+          require, plus one letter that many households can sign.</p>
+      </li>
+      <li>
+        <h3>Track it in the open</h3>
+        <p>Show what's been requested, what the city has planned, what's being built this week, and what's
+          done, so neighbors can follow up instead of starting over.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="wrap" aria-labelledby="help-h">
+    <h2 id="help-h">How you can help</h2>
+    <div class="cards">
+      <article class="card">
+        <span class="num">1</span>
+        <h3>Find your corners</h3>
+        <p>Open the map, or stand on a corner and tap the locate button. Each corner shows what's missing and how sure we are.</p>
+        <a href="map.html">Open the map →</a>
+      </article>
+      <article class="card">
+        <span class="num">2</span>
+        <h3>File a request</h3>
+        <p><strong>If you have a disability, or care for someone who does:</strong> use SDOT's Curb Ramp Request form.
+          <strong>Everyone else:</strong> send a general request to the Customer Service Bureau. Every corner has copy-ready request text.</p>
+        <a href="map.html?tab=request">Which form do I use? →</a>
+      </article>
+      <article class="card">
+        <span class="num">3</span>
+        <h3>Join the group request</h3>
+        <p>The map groups corners into ready-to-file packets and drafts a neighborhood letter to SDOT and our councilmember.</p>
+        <a href="map.html?tab=group">Build a group request →</a>
+      </article>
+      <article class="card">
+        <span class="num">4</span>
+        <h3>Say what you filed</h3>
+        <p>Log it with the date and tracking number (no personal details), so nobody files duplicates and we can follow up together.</p>
+        <a href="https://github.com/olivierlacan/trebuche/issues/new?labels=request-filed&amp;title=Request%20filed">Log a request →</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="how-h">
+    <h2 id="how-h">Why combine three sources</h2>
+    <p class="section-lede">No single public source gets Dayton right. Putting them side by side, corner by corner, shows where each one is wrong.</p>
+    <div class="cards three">
+      <article class="card">
+        <h3>SDOT's curb ramp inventory</h3>
+        <p>The city's record of every ramp, with install dates and planned work. It's silent where no ramp was ever recorded,
+          and its public maps draw unbuilt placeholder records at N 79th St as if they were ramps.</p>
+      </article>
+      <article class="card">
+        <h3>Project Sidewalk</h3>
+        <p>University of Washington volunteers labeling street-level imagery. It catches missing ramps the city never logged,
+          but its photos are mostly from 2018–2022, so it misses ramps built since, like N 63rd St in August 2026.</p>
+      </article>
+      <article class="card">
+        <h3>OpenStreetMap</h3>
+        <p>Community map data, including whether each crossing's curb is raised or lowered.
+          It tells us which crossing at a corner lacks a ramp.</p>
+      </article>
+    </div>
+    <p class="small">A corner gets a black X only when at least two sources agree it has no ramp.
+      Where they disagree, the map says so, and the more recent observation wins when dates make that clear.</p>
+  </section>
+
+  <section class="wrap" aria-labelledby="who-h">
+    <h2 id="who-h">About this project</h2>
+    <p>Started by neighbors on Phinney Ridge. It isn't affiliated with the City of Seattle, and filing through this site
+      isn't a substitute for filing with the city: every request still goes through SDOT's own channels.</p>
+    <p>Everything is open: the <a href="https://github.com/olivierlacan/trebuche">code and method on GitHub</a>,
+      and the full corner-by-corner data as a <a href="corners.csv" download>spreadsheet (CSV)</a>.
+      <span id="refreshed"></span></p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-brand"><img src="../../logo.svg" width="40" height="40" alt=""><span>Dayton Ave N curb ramps</span></div>
+    <a class="btn primary" href="map.html">Open the map</a>
+    <p class="small">Data: SDOT curb ramp inventory and work orders, Project Sidewalk (University of Washington), © OpenStreetMap contributors.</p>
+  </div>
+</footer>
+
+<script src="data.js"></script>
+<script src="../../area.js"></script>
+</body>
+</html>

@@ -1,14 +1,14 @@
 # trebuche
 
-Finding missing curb ramps along **Dayton Ave N, Seattle (N 60th – N 85th St, Phinney Ridge)**
-so neighbors can file SDOT curb ramp requests, starting with stroller access.
+Finding missing curb ramps, corner by corner, and helping neighbors ask the city to build
+them. The first street is **Dayton Ave N, Seattle (N 60th – N 85th St, Phinney Ridge)**.
 
 **Website:** <https://olivierlacan.github.io/trebuche/> (see [Publishing](#publishing)).
 
 ```
 ruby scripts/fetch.rb    # download all sources into data/raw/  (~1 min)
-ruby scripts/build.rb    # write output/corners.csv + .geojson and docs/data.js
-open docs/index.html     # landing page; the map is docs/map.html (both work from disk)
+ruby scripts/build.rb    # write output/, docs/areas.js and docs/seattle/phinney-ridge/data.js
+open docs/index.html     # every page also works straight from disk
 ```
 
 Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`,
@@ -18,20 +18,32 @@ Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`
 
 | File | What |
 |---|---|
-| `docs/` | The website. Hand-written: `index.html` + `landing.css` + `landing.js` (landing page), `map.html` + `style.css` + `app.js` (map). Generated: `data.js`, `corners.csv` |
+| `docs/` | The website (see below). Generated: `areas.js`, `seattle/phinney-ridge/data.js` and `corners.csv`, plus `og.png` images rendered by hand |
 | `output/corners.csv` | One row per corner: overall status, which crossings lack a ramp, per-source verdicts, city install date, SDOT work orders, evidence IDs |
 | `output/corners.geojson` | Same rows as points |
 
 ## The website
 
-**Landing page** (`index.html`): what the project is for and its goals, live counts of
-missing and partial corners, a strip showing every corner from 60th to 85th (each links
-into the map), how neighbors can help, and why the site combines three sources. Its
-numbers come from the same `data.js` as the map, so they update with the daily refresh.
-Links with map parameters to the old address (`/?corner=61-NE`) are forwarded to
-`map.html`, so links shared before the landing page existed still work.
+| Page | File | What |
+|---|---|---|
+| Home | `docs/index.html` | The project, not tied to a place: what it does, how it works, how sure "missing" is, how to start a street, and a card per street |
+| Seattle | `docs/seattle/index.html` | How to ask Seattle for a ramp, what Seattle's data gets wrong, other Seattle tools, and Seattle's streets |
+| Phinney Ridge | `docs/seattle/phinney-ridge/index.html` | Dayton Ave N: live counts, the corner strip, goals, how to help |
+| Map | `docs/seattle/phinney-ridge/map.html` | The Dayton Ave N map (below) |
 
-**Map** (`map.html`): a static Leaflet map plus a side panel (below the map on phones):
+Shared files live at the top of `docs/`: `logo.svg`, `site.css` (text pages), `style.css`
+and `app.js` (map), `area.js` (a street's landing page), `area-cards.js` (street cards,
+drawn from the generated `areas.js`). The street pages read their own `data.js`.
+
+Old links keep working: `/?corner=…` and `/map.html?corner=…` (from before the site had
+sections) forward to the Dayton Ave N map with the same parameters.
+
+**Street landing page:** what the effort is for and its goals, live counts of missing and
+partial corners, a strip showing every corner from 60th to 85th (each links into the map),
+how neighbors can help, and why the site combines three sources. Its numbers come from the
+same `data.js` as the map, so they update with the daily refresh.
+
+**Map:** a static Leaflet map plus a side panel (below the map on phones):
 
 - **Key:** what the markers mean, and layer toggles.
 - **Corner:** everything known about one corner, with **Copy request text** (location,
@@ -58,7 +70,7 @@ points (SDOT ramp records and OSM kerb nodes) for that corner, so they land on t
 
 | Parameter | Example | Effect |
 |---|---|---|
-| `corner` | `map.html?corner=61-NE` | Opens that corner and zooms to it |
+| `corner` | `seattle/phinney-ridge/map.html?corner=61-NE` | Opens that corner and zooms to it |
 | `lat`, `lng`, `z` | `?lat=47.66683&lng=-122.35565&z=21` | Map center and zoom (1–21) |
 | `sel` | `?sel=79-NE,79-NW,64W-SW` | Corners in the group request |
 | `tab` | `?tab=group` | Which panel is open: `key`, `corner`, `request`, `group`, `list` |

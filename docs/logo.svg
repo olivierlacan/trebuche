@@ -1,19 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dayton Ave N curb ramps: a person walking down a curb ramp">
-  <!-- Side elevation: raised sidewalk (left), a smooth exaggerated curb ramp,
-       and the street (right), with a pedestrian walking down the ramp. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a person walking down a curb ramp">
+  <!-- Side elevation: raised sidewalk (left), a gentle curb ramp (about 16
+       degrees, still exaggerated so it reads at icon size), and the street
+       (right), with a pedestrian walking down the ramp. -->
   <defs><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
   <g clip-path="url(#badge)">
     <rect width="64" height="64" fill="#1f2a24"/>
     <!-- sidewalk, ramp, street -->
-    <path d="M0 30H12L48 48H64V64H0Z" fill="#f4c542"/>
+    <path d="M0 33H6L54 47H64V64H0Z" fill="#f4c542"/>
     <!-- walker: straight-legged stride, both feet on the ramp surface -->
     <g stroke="#f4f1ea" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M26.6 25.2L28.8 15.8"/>
-      <path d="M26.6 25.2L23.5 34"/>
-      <path d="M26.6 25.2L29.5 37"/>
-      <path d="M28.4 17.6L24.6 23.2"/>
-      <path d="M28.4 17.6L32.8 22.6"/>
+      <path d="M27.4 27.4L29.6 17.8"/>
+      <path d="M27.4 27.4L24 36.5"/>
+      <path d="M27.4 27.4L31 38.5"/>
+      <path d="M29.2 19.6L25.4 25.2"/>
+      <path d="M29.2 19.6L33.6 24.6"/>
     </g>
-    <circle cx="30" cy="10.6" r="3.9" fill="#f4f1ea"/>
+    <circle cx="30.8" cy="12.6" r="3.9" fill="#f4f1ea"/>
   </g>
 </svg>

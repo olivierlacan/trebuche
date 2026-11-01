@@ -3,160 +3,128 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dayton Ave Curb Ramps</title>
-<meta name="description" content="A neighborhood effort to find every missing curb ramp on Dayton Ave N between N 60th and N 85th St in Seattle's Phinney Ridge, and get them built.">
+<title>Trebuche: Missing Curb Ramps</title>
+<meta name="description" content="Trebuche checks every street corner for missing curb ramps using city records, volunteer street-imagery labels and OpenStreetMap, then helps neighbors ask the city to build them.">
+<script>
+  // Map links shared before the site had sections: send them to the Dayton Ave N map.
+  if (/[?&](corner|sel|lat|lng|z|tab)=/.test(location.search)) location.replace("seattle/phinney-ridge/map.html" + location.search + location.hash);
+</script>
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#1f2a24">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Curb ramps for every corner of Dayton Ave N">
-<meta property="og:description" content="Find the missing curb ramps on Dayton Ave N (N 60th to N 85th St, Phinney Ridge) and ask the city together.">
+<meta property="og:title" content="Trebuche: find the missing curb ramps on your street">
+<meta property="og:description" content="Check every corner for missing curb ramps with public data, then ask the city together.">
 <meta property="og:url" content="https://olivierlacan.github.io/trebuche/">
 <meta property="og:image" content="https://olivierlacan.github.io/trebuche/og.png">
-<meta property="og:image:alt" content="Logo of a person walking down a curb ramp, with the words: Curb ramps for every corner of Dayton Ave N">
+<meta property="og:image:alt" content="Trebuche logo, a person walking down a curb ramp, with the words: Curb ramps for every corner">
 <meta name="twitter:card" content="summary_large_image">
-<script>
-  // Links shared before the map moved to map.html: forward map parameters there.
-  if (/[?&](corner|sel|lat|lng|z|tab)=/.test(location.search)) location.replace("map.html" + location.search + location.hash);
-</script>
-<link rel="stylesheet" href="landing.css">
+<link rel="stylesheet" href="site.css">
 </head>
 <body>
 
 <header class="hero">
   <div class="wrap">
     <img class="hero-logo" src="logo.svg" width="72" height="72" alt="">
-    <p class="eyebrow">Phinney Ridge, Seattle</p>
-    <h1>Curb ramps for every corner of Dayton&nbsp;Ave&nbsp;N</h1>
-    <p class="lede">Walk Dayton between N 60th and N 85th St with a stroller, a wheelchair, a walker or a cart,
-      and you'll hit a curb with no ramp at almost every block. This is a neighborhood effort to find
-      every missing ramp, show the evidence, and ask the city to build them.</p>
+    <p class="eyebrow">Trebuche</p>
+    <h1>Curb ramps for every corner</h1>
+    <p class="lede">A missing curb ramp turns a curb into a wall for anyone pushing a stroller, using a wheelchair or walker,
+      or pulling a cart. Cities often don't know exactly where ramps are missing. Trebuche checks every corner of a street
+      against public data, shows the evidence, and helps neighbors ask the city to build what's missing.</p>
     <div class="ctas">
-      <a class="btn primary" href="map.html">Open the map</a>
-      <a class="btn" href="map.html?tab=request">How to request a ramp</a>
+      <a class="btn primary" href="#where">See where we're working</a>
+      <a class="btn" href="#how">How it works</a>
     </div>
   </div>
 </header>
 
 <main>
-  <section class="wrap stats" aria-labelledby="now-h">
-    <h2 id="now-h">Where things stand</h2>
-    <p class="section-lede" id="stats-lede">Every corner along the 25 blocks, checked against three public datasets.</p>
-    <div class="stat-grid" id="stat-grid"></div>
-  </section>
-
-  <section class="wrap" aria-labelledby="glance-h">
-    <h2 id="glance-h">The street at a glance</h2>
-    <p class="section-lede">Each column is one intersection on Dayton, south (N 60th) to north (N 85th).
-      Its four marks are the four corners, laid out as on a map: north on top. Select any corner to open it.</p>
-    <div class="strip-scroll" tabindex="0" aria-label="Corners of Dayton Ave N, scrollable">
-      <div class="strip" id="strip"></div>
+  <section class="wrap" id="where" aria-labelledby="where-h">
+    <h2 id="where-h">Where we're working</h2>
+    <p class="section-lede">Each street gets its own page and map, with every corner checked and ready-to-file requests.
+      Cities have their own pages for how to ask that city for a ramp.</p>
+    <div class="areas" data-area-cards data-base="" data-show-city>
+      <a class="area soon" href="#start">
+        <span class="where">Your neighborhood?</span>
+        <h3>Start a street</h3>
+        <span class="small">What it takes to check another street, in Seattle or elsewhere.</span>
+        <span class="go">How to start →</span>
+      </a>
     </div>
-    <p class="swipe-hint small" aria-hidden="true">Swipe sideways to see all intersections →</p>
-    <ul class="legend" id="legend"></ul>
+    <p class="small" style="margin-top:14px">Cities: <a href="seattle/">Seattle</a></p>
   </section>
 
-  <section class="wrap" aria-labelledby="goals-h">
-    <h2 id="goals-h">Our goals</h2>
-    <p class="section-lede">The end goal is simple: <strong>every corner on Dayton Ave N from N 60th to N 85th St has a curb ramp for both crossings.</strong> Getting there takes four steps.</p>
+  <section class="wrap" id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How it works</h2>
     <ol class="goals">
       <li>
-        <h3>Know exactly what's missing</h3>
-        <p>Not just "this intersection is bad," but which corner, and which of its two crossings has no ramp,
-          backed by public data anyone can check. The data refreshes every day.</p>
+        <h3>Check every corner, crossing by crossing</h3>
+        <p>A corner usually needs two ramps, one for each street you can cross. Trebuche looks at each crossing,
+          so a corner with just one ramp shows up as a problem instead of passing as "done".</p>
       </li>
       <li>
-        <h3>Restart work the city already planned</h3>
-        <p id="goal-onhold">Some Dayton ramps have been in an SDOT project marked "on hold" since 2022.
-          Asking the city to finish what it started is the quickest win.</p>
+        <h3>Use more than one source</h3>
+        <p>City ramp records, volunteer labels from street-level imagery (Project Sidewalk), and OpenStreetMap
+          each miss things. Comparing them corner by corner shows where each one is wrong or out of date.</p>
       </li>
       <li>
-        <h3>Ask together, and ask well</h3>
-        <p>Complete, evidence-backed requests through the right city channel, split the way SDOT's forms
-          require, plus one letter that many households can sign.</p>
+        <h3>Ask the right way</h3>
+        <p>Every corner comes with copy-ready request text and the right city channel. Groups of corners are split
+          to fit the city's forms, with a letter many households can sign.</p>
       </li>
       <li>
         <h3>Track it in the open</h3>
-        <p>Show what's been requested, what the city has planned, what's being built this week, and what's
-          done, so neighbors can follow up instead of starting over.</p>
+        <p>What's been requested, what the city has planned, what's being built this week, and what's done.
+          The data refreshes every day.</p>
       </li>
     </ol>
   </section>
 
-  <section class="wrap" aria-labelledby="help-h">
-    <h2 id="help-h">How you can help</h2>
-    <div class="cards">
-      <article class="card">
-        <span class="num">1</span>
-        <h3>Find your corners</h3>
-        <p>Open the map, or stand on a corner and tap the locate button. Each corner shows what's missing and how sure we are.</p>
-        <a href="map.html">Open the map →</a>
-      </article>
-      <article class="card">
-        <span class="num">2</span>
-        <h3>File a request</h3>
-        <p><strong>If you have a disability, or care for someone who does:</strong> use SDOT's Curb Ramp Request form.
-          <strong>Everyone else:</strong> send a general request to the Customer Service Bureau. Every corner has copy-ready request text.</p>
-        <a href="map.html?tab=request">Which form do I use? →</a>
-      </article>
-      <article class="card">
-        <span class="num">3</span>
-        <h3>Join the group request</h3>
-        <p>The map groups corners into ready-to-file packets and drafts a neighborhood letter to SDOT and our councilmember.</p>
-        <a href="map.html?tab=group">Build a group request →</a>
-      </article>
-      <article class="card">
-        <span class="num">4</span>
-        <h3>Say what you filed</h3>
-        <p>Log it with the date and tracking number (no personal details), so nobody files duplicates and we can follow up together.</p>
-        <a href="https://github.com/olivierlacan/trebuche/issues/new?labels=request-filed&amp;title=Request%20filed">Log a request →</a>
-      </article>
+  <section class="wrap" aria-labelledby="sure-h">
+    <h2 id="sure-h">How sure is "missing"?</h2>
+    <div class="prose">
+      <p>A corner is marked as having no ramp only when at least two independent sources agree. Where sources disagree,
+        the map says so, and the more recent observation wins when the dates make that clear. Anything uncertain is shown
+        as uncertain, so neighbors can go look before filing.</p>
+      <p>That matters because official maps can be wrong in both directions: on one Seattle street, the city's public map
+        shows ramps that were planned but never built, while volunteer imagery from 2022 misses ramps the city built in 2026.
+        <a href="seattle/#data-notes">More on that</a>.</p>
     </div>
   </section>
 
-  <section class="wrap" aria-labelledby="how-h">
-    <h2 id="how-h">Why combine three sources</h2>
-    <p class="section-lede">No single public source gets Dayton right. Putting them side by side, corner by corner, shows where each one is wrong.</p>
-    <div class="cards three">
-      <article class="card">
-        <h3>SDOT's curb ramp inventory</h3>
-        <p>The city's record of every ramp, with install dates and planned work. It's silent where no ramp was ever recorded,
-          and its public maps draw unbuilt placeholder records at N 79th St as if they were ramps.</p>
-      </article>
-      <article class="card">
-        <h3>Project Sidewalk</h3>
-        <p>University of Washington volunteers labeling street-level imagery. It catches missing ramps the city never logged,
-          but its photos are mostly from 2018–2022, so it misses ramps built since, like N 63rd St in August 2026.</p>
-      </article>
-      <article class="card">
-        <h3>OpenStreetMap</h3>
-        <p>Community map data, including whether each crossing's curb is raised or lowered.
-          It tells us which crossing at a corner lacks a ramp.</p>
-      </article>
+  <section class="wrap" id="start" aria-labelledby="start-h">
+    <h2 id="start-h">Start a street</h2>
+    <div class="prose">
+      <p>Trebuche works best where three things exist:</p>
+      <ol class="steps">
+        <li><strong>A curb ramp inventory from the city.</strong> Many US cities publish one as open data, often with install dates and planned work.</li>
+        <li><strong>Project Sidewalk or OpenStreetMap coverage.</strong> <a href="https://sidewalk-sea.cs.washington.edu/">Project Sidewalk</a> runs in dozens of cities, and anyone can add curb details to <a href="https://www.openstreetmap.org/">OpenStreetMap</a>.</li>
+        <li><strong>Neighbors who'll walk the street.</strong> Data gets you most of the way; a quick look settles the uncertain corners.</li>
+      </ol>
+      <p>Today the scripts are set up for one street at a time. Adding another means adjusting a few settings and checking the
+        results. <a href="https://github.com/olivierlacan/trebuche/issues/new?title=Add%20a%20street%3A%20">Open an issue on GitHub</a>
+        with the street, the stretch and the city.</p>
     </div>
-    <p class="small">A corner gets a black X only when at least two sources agree it has no ramp.
-      Where they disagree, the map says so, and the more recent observation wins when dates make that clear.</p>
   </section>
 
-  <section class="wrap" aria-labelledby="who-h">
-    <h2 id="who-h">About this project</h2>
-    <p>Started by neighbors on Phinney Ridge. It isn't affiliated with the City of Seattle, and filing through this site
-      isn't a substitute for filing with the city: every request still goes through SDOT's own channels.</p>
-    <p>Everything is open: the <a href="https://github.com/olivierlacan/trebuche">code and method on GitHub</a>,
-      and the full corner-by-corner data as a <a href="corners.csv" download>spreadsheet (CSV)</a>.
-      <span id="refreshed"></span></p>
+  <section class="wrap" aria-labelledby="about-h">
+    <h2 id="about-h">About</h2>
+    <div class="prose">
+      <p>Trebuche is a neighbor-run project. It isn't affiliated with any city government, and it doesn't file anything for you:
+        every request still goes through the city's own channels.</p>
+      <p>Everything is open: the <a href="https://github.com/olivierlacan/trebuche">code, method and data on GitHub</a>.</p>
+    </div>
   </section>
 </main>
 
 <footer class="foot">
   <div class="wrap">
-    <div class="foot-brand"><img src="logo.svg" width="40" height="40" alt=""><span>Dayton Ave N curb ramps</span></div>
-    <a class="btn primary" href="map.html">Open the map</a>
-    <p class="small">Data: SDOT curb ramp inventory and work orders, Project Sidewalk (University of Washington), © OpenStreetMap contributors.</p>
+    <div class="foot-brand"><img src="logo.svg" width="40" height="40" alt=""><span>Trebuche</span></div>
+    <p class="small">Data from city curb ramp inventories, Project Sidewalk (University of Washington), and © OpenStreetMap contributors.</p>
   </div>
 </footer>
 
-<script src="data.js"></script>
-<script src="landing.js"></script>
+<script src="areas.js"></script>
+<script src="area-cards.js"></script>
 </body>
 </html>
