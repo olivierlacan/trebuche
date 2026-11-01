@@ -6,7 +6,8 @@
 # Reads data/raw/* (from fetch.rb) and data/requests.csv, writes:
 #   output/corners.csv      one row per intersection corner
 #   output/corners.geojson  same, as points
-#   output/map.html         Leaflet map (data embedded; open directly in a browser)
+#   docs/data.js            data for the website in docs/
+#   docs/corners.csv        copy of the CSV, linked from the website
 #
 # Each corner can need up to two ramps: one for crossing Dayton ("main") and one
 # for crossing the side street ("cross"). A corner with only one of the two is
@@ -15,6 +16,7 @@
 # Standard library only. Run from the repo root:  ruby scripts/build.rb
 
 require "csv"
+require "fileutils"
 require "json"
 require "set"
 require "time"
@@ -22,6 +24,7 @@ require "time"
 ROOT = File.expand_path("..", __dir__)
 RAW = File.join(ROOT, "data", "raw")
 OUT = File.join(ROOT, "output")
+DOCS = File.join(ROOT, "docs")
 
 MAIN_STREET = "Dayton Avenue North"
 FIRST_ST = 60
@@ -208,17 +211,57 @@ end
 
 def built?(r) = %w[SINGLE SHARED].include?(blank(r["CATEGORY"]))
 
-def open_work_orders
-  load("city_work_orders.geojson")["features"].each_with_object(Hash.new { |h, k| h[k] = [] }) do |f, acc|
-    a = f["properties"]
-    next unless a["PROBLEMDESC"] == "Planned Construction" && !a["CLOSEDDT"] && a["CANCELLEDFLAG"] != "Y"
+WORK_TYPES = ["Planned Construction", "Customer Service Request Curb Ramp"].freeze
+RECENT_CLOSE_DAYS = 45
 
-    acc[a["UNITID"]] << blank(a["GROUPPROJNAME"])
+# SDOT curb ramp work orders that are open, or closed recently enough that the
+# map might call them "ongoing" this week. Planned vs. ongoing is decided in
+# the browser against the viewer's current date, so the site doesn't go stale
+# between rebuilds.
+def work_orders
+  cutoff = Time.at(Time.now.to_i - RECENT_CLOSE_DAYS * 86_400).utc.strftime("%F")
+  load("city_work_orders.geojson")["features"].filter_map do |f|
+    a = f["properties"]
+    next unless WORK_TYPES.include?(a["PROBLEMDESC"]) && a["CANCELLEDFLAG"] != "Y" && f["geometry"]
+
+    closed = ms_to_date(a["CLOSEDDT"])
+    next if !closed.empty? && closed < cutoff
+
+    lon, lat = f["geometry"]["coordinates"]
+    {
+      "lat" => lat.round(6), "lon" => lon.round(6), "id" => a["UNITID"],
+      "intersection" => blank(a["INT_UNITDESC"]),
+      "kind" => a["PROBLEMDESC"] == "Planned Construction" ? "planned construction" : "resident request",
+      "project" => blank(a["GROUPPROJNAME"]),
+      "started" => ms_to_date(a["INITDTTM"] || a["WO_ADDDTTM"]),
+      "est_complete" => ms_to_date(a["ESTCOMPDT"]),
+      "closed" => closed,
+    }
+  end.uniq
+end
+
+def work_order_evidence(intersections, orders)
+  assign(orders.map { [_1["lat"], _1["lon"], _1] }, intersections).to_h do |key, wos|
+    [key, {
+      "sdot_projects" => wos.map { _1["project"] }.uniq.reject(&:empty?).join("; "),
+      "sdot_work" => wos.map { |w| "#{w["id"]} #{w["kind"]}" }.uniq.join("; "),
+      "work_orders" => wos,
+    }]
+  end
+end
+
+# Where each corner actually is: the average of mapped curb points (SDOT ramp
+# records and OSM kerb nodes) in that quadrant, so zooming to street level
+# lands on the curb. Corners with no mapped points keep a fixed offset.
+def precise_positions(intersections, nodes)
+  pts = load("city_curb_ramps.geojson")["features"].map { _1["geometry"]["coordinates"].reverse }
+  pts += nodes.values.filter_map { [_1["lat"], _1["lon"]] if _1.dig("tags", "kerb") }
+  assign(pts.map { |lat, lon| [lat, lon, [lat, lon]] }, intersections).transform_values do |ll|
+    [(ll.sum(&:first) / ll.size).round(6), (ll.sum(&:last) / ll.size).round(6)]
   end
 end
 
 def city_evidence(intersections, needs)
-  wo = open_work_orders
   pts = load("city_curb_ramps.geojson")["features"].map do |f|
     lon, lat = f["geometry"]["coordinates"]
     [lat, lon, f["properties"]]
@@ -244,7 +287,6 @@ def city_evidence(intersections, needs)
     observed = recs.flat_map do |r|
       %w[INSTALL_DATE VERIFICATION_DATE ASSESSMENT_DATE].filter_map { ms_to_date(r[_1]) if r[_1] }
     end.sort
-    planned = (recs.flat_map { wo[_1["UNITID"]] }.uniq - [""]).sort
     [key, {
       "city" => built.any? || noramp.any? ? v : "unassessed",
       "city_covers" => covered.sort.join("+"),
@@ -255,7 +297,6 @@ def city_evidence(intersections, needs)
       "city_last_observed" => observed.last.to_s,
       "city_condition" => (built.map { blank(_1["CONDITION"]) }.uniq - [""]).sort.join("/"),
       "city_ada" => (recs.map { blank(_1["ADA_COMPLIANT"]) }.uniq - [""]).sort.join("/"),
-      "city_planned_project" => planned.join("; "),
       "city_ids" => recs.map { _1["UNITID"] }.sort.join(" "),
     }]
   end
@@ -337,6 +378,7 @@ def osm_evidence(nodes, ways, intersections, needs)
     v = "ramp (partly mapped)" if v == "present" && !need.all? { covered.include?(_1) }
     [key, {
       "osm" => v,
+      "osm_covers" => covered.sort.join("+"),
       "osm_kerbs" => detail.sort.join(" "),
       "osm_last_edit" => ns.filter_map { _1["timestamp"]&.slice(0, 10) }.max.to_s,
       "osm_node_ids" => ns.map { _1["id"] }.join(" "),
@@ -388,10 +430,11 @@ end
 
 FIELDS = %w[
   corner_id intersection_id cross_street corner corner_type lat lon
-  overall sources_disagree note
+  overall confirmed_missing needs missing_crossings sources_disagree note
+  sdot_projects sdot_work
   city city_install_date city_last_observed city_covers
   city_ramp_count city_noramp_count city_placeholder_count
-  city_condition city_ada city_planned_project city_ids
+  city_condition city_ada city_ids
   ps ps_ramp_labels ps_noramp_labels ps_validated
   ps_ramp_max_severity ps_ramp_issues ps_image_date ps_label_ids
   osm osm_kerbs osm_last_edit osm_node_ids
@@ -412,6 +455,18 @@ def city_ramp_points
   end
 end
 
+def missing_crossings(row, needs)
+  case row["overall"]
+  when "missing" then needs
+  when "partial"
+    covered = (row["city_covers"].to_s.split("+") + row["osm_covers"].to_s.split("+")).uniq
+    gap = needs - covered
+    # Without knowing which crossing has the ramp, we can't say which lacks one.
+    covered.empty? || gap.empty? ? ["unknown"] : gap
+  else []
+  end
+end
+
 def main
   nodes, ways = load_osm
   intersections = find_intersections(nodes, ways)
@@ -420,17 +475,23 @@ def main
   city = city_evidence(intersections, needs)
   ps = ps_evidence(intersections)
   osm = osm_evidence(nodes, ways, intersections, needs)
+  orders = work_orders
+  wo = work_order_evidence(intersections, orders)
+  positions = precise_positions(intersections, nodes)
   requests = load_requests
 
   rows = corners.map do |c|
     key = [c["intersection_id"], c["corner"]]
     row = FIELDS.to_h { [_1, ""] }
     row.merge!(c.except("needs"))
-    row.merge!("city" => "no record", "ps" => "unknown", "osm" => "unknown")
-    row.merge!(city.fetch(key, {}), ps.fetch(key, {}), osm.fetch(key, {}))
+    row["lat"], row["lon"] = positions[key] if positions[key]
+    row.merge!("city" => "no record", "ps" => "unknown", "osm" => "unknown", "work_orders" => [])
+    row.merge!(city.fetch(key, {}), ps.fetch(key, {}), osm.fetch(key, {}), wo.fetch(key, {}))
     overall, disagree, note = combine(row)
-    note = [note, "SDOT planned: #{row["city_planned_project"]}"].reject(&:empty?).join("; ") unless row["city_planned_project"].empty?
     row.merge!("overall" => overall, "sources_disagree" => disagree ? "yes" : "", "note" => note)
+    row["confirmed_missing"] = "yes" if overall == "missing" && %w[city ps osm].count { row[_1] == "missing" } >= 2
+    row["needs"] = c["needs"].join("+")
+    row["missing_crossings"] = missing_crossings(row, c["needs"]).join("+")
     if (req = requests[c["corner_id"]])
       row.merge!("request_filed" => "yes", "request_date" => req["date_filed"].to_s,
                  "request_ref" => req["sdot_reference"].to_s, "request_status" => req["status"].to_s)
@@ -457,9 +518,18 @@ def main
   }
   File.write(File.join(OUT, "corners.geojson"), "#{JSON.pretty_generate(geojson)}\n")
 
-  map_data = geojson.merge("city_ramps" => city_ramp_points)
-  template = File.read(File.join(ROOT, "scripts", "map_template.html"))
-  File.write(File.join(OUT, "map.html"), template.sub("/*__DATA__*/null") { JSON.generate(map_data) })
+  # The website (docs/) loads its data from a plain script so it also works
+  # when index.html is opened straight from disk.
+  site = {
+    "generated" => Time.now.utc.iso8601,
+    "fetched" => fetched,
+    "corners" => rows,
+    "city_ramps" => city_ramp_points,
+    "work_orders" => orders,
+  }
+  File.write(File.join(DOCS, "data.js"),
+             "// Generated by scripts/build.rb -- do not edit.\nwindow.RAMPS = #{JSON.generate(site)};\n")
+  FileUtils.cp(File.join(OUT, "corners.csv"), File.join(DOCS, "corners.csv"))
 
   puts "#{intersections.size} intersections: #{intersections.map { _1[:id] }.join(" ")}"
   puts "#{rows.size} corners"

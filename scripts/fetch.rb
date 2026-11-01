@@ -87,7 +87,8 @@ def fetch_city_work_orders
   # WORKDESC is deliberately excluded: it can contain residents' names and
   # contact details copied from service requests.
   fields = %w[UNITID INT_UNITDESC CURRENT_STATUS CANCELLEDFLAG CLOSEDDT
-              ESTCOMPDT GROUPPROJNAME PROBLEMDESC SOURCE WO_ADDDTTM]
+              ESTCOMPDT GROUPPROJNAME PROBLEMDESC SOURCE WO_ADDDTTM
+              INITDTTM WO_MODDTTM]
   d = http(CITY_WO_URL, params: arcgis_params(fields.join(",")))
   puts "  #{d["features"].size} work orders"
   save("city_work_orders.geojson", d, CITY_WO_URL)

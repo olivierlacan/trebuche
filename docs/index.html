@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dayton Ave Curb Ramps</title>
+<meta name="description" content="Which street corners on Dayton Ave N (N 60th to N 85th St, Seattle) are missing curb ramps, and how neighbors can ask the city to fix them.">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Dayton Ave N curb ramps</h1>
+    <p>N 60th to N 85th St, Phinney Ridge, Seattle</p>
+  </div>
+</header>
+
+<main class="layout">
+  <div id="map" role="application" aria-label="Map of Dayton Ave N corners and their curb ramps"></div>
+
+  <aside class="panel">
+    <nav class="tabs" role="tablist" aria-label="Panels">
+      <button role="tab" id="tab-key" aria-controls="pane-key" data-tab="key">Key</button>
+      <button role="tab" id="tab-corner" aria-controls="pane-corner" data-tab="corner">Corner</button>
+      <button role="tab" id="tab-request" aria-controls="pane-request" data-tab="request">How to request</button>
+      <button role="tab" id="tab-group" aria-controls="pane-group" data-tab="group">Group <span class="count" id="sel-count" hidden></span></button>
+      <button role="tab" id="tab-list" aria-controls="pane-list" data-tab="list">All corners</button>
+    </nav>
+
+    <!-- Key -->
+    <section role="tabpanel" id="pane-key" aria-labelledby="tab-key">
+      <p class="lede">Each marker is one corner where a sidewalk meets Dayton Ave N. Tap one to see
+        what we know about it and how to ask the city for a curb ramp.</p>
+      <h2>Corners</h2>
+      <ul class="key" id="key-corners"></ul>
+      <h2>Ramp age (SDOT install date)</h2>
+      <div class="ramp-bar" id="ramp-bar"></div>
+      <div class="ramp-ticks"><span>now</span><span>1 year</span><span id="oldest-year"></span></div>
+      <ul class="key" id="key-age"></ul>
+      <h2>City work</h2>
+      <ul class="key" id="key-work"></ul>
+      <h2>Layers</h2>
+      <label class="check"><input type="checkbox" id="layer-ramps" checked> Every SDOT ramp nearby, by age</label>
+      <label class="check"><input type="checkbox" id="layer-work" checked> SDOT curb ramp work orders nearby</label>
+      <p class="small" id="data-dates"></p>
+      <p class="small">Sources: <a href="https://www.arcgis.com/home/item.html?id=28b3f55be93645888724bf61cd5e6ae8">SDOT curb ramp inventory</a> and <a href="https://www.arcgis.com/home/item.html?id=14712cda97f94213866863d67c05ef6b">work orders</a>,
+        <a href="https://sidewalk-sea.cs.washington.edu/">Project Sidewalk</a> (University of Washington volunteers labeling street imagery), and
+        <a href="https://www.openstreetmap.org/">OpenStreetMap</a>. Download everything as a
+        <a href="corners.csv" download>spreadsheet (CSV)</a>.</p>
+    </section>
+
+    <!-- Selected corner -->
+    <section role="tabpanel" id="pane-corner" aria-labelledby="tab-corner" hidden>
+      <div id="corner-detail"><p class="lede">Tap a corner on the map, or pick one from <button class="link" data-goto="list">All corners</button>.</p></div>
+    </section>
+
+    <!-- How to request -->
+    <section role="tabpanel" id="pane-request" aria-labelledby="tab-request" hidden>
+      <p class="lede">Seattle has two ways in. Which one fits depends on who's asking.</p>
+
+      <h2>If you have a disability, or directly care for someone who does</h2>
+      <p>Use SDOT's <strong>Curb Ramp Request</strong> form. This is the city's ADA program, and it
+        builds ramps that people with disabilities ask for at places not already scheduled.</p>
+      <ul>
+        <li>Each form can cover ramps at <strong>no more than two intersections</strong>. There's no limit on how many forms you send.</li>
+        <li>SDOT sends a first response within 15 days of verifying the request, and preliminary project scoping within 30 days.</li>
+        <li>Questions: <a href="mailto:DOT_ADAProgram@seattle.gov">DOT_ADAProgram@seattle.gov</a>, (206) 386-1055, or toll-free (833) 414-5871.</li>
+      </ul>
+      <p><a class="button primary" href="https://forms.office.com/g/R2d2GXDbXu" target="_blank" rel="noopener">Open the SDOT Curb Ramp Request form</a></p>
+      <p class="small">From SDOT's <a href="https://www.seattle.gov/transportation/projects-and-programs/programs/ada-program/make-an-ada-request">Make an ADA Infrastructure Request</a> page.</p>
+
+      <h2>Everyone else (strollers, carts, bikes, getting older)</h2>
+      <p>The ADA form is reserved for disability access, so send a general request to the city's
+        Customer Service Bureau, which routes it to SDOT.</p>
+      <ul>
+        <li>In the <a href="https://www.seattle.gov/customer-service-bureau/find-it-fix-it-mobile-app">Find It, Fix It app</a>, choose <strong>General Inquiry – Customer Service Bureau</strong>. There's no curb ramp category.</li>
+        <li>Or use the <a href="https://seattle-cwiprod.motorolasolutions.com/">online request portal</a> (same categories, no app needed).</li>
+      </ul>
+
+      <h2>What to include</h2>
+      <p>Every corner on this map has a <strong>Copy request text</strong> button. It writes out the exact
+        location, which crossing needs a ramp, and the evidence, plus a link back to that corner on this map.
+        Paste it into the form, then attach a photo if you can.</p>
+
+      <h2>After you file</h2>
+      <p>Save your confirmation or tracking number and <a href="#" data-action="log-request">tell the group</a>
+        so we don't file duplicates and can follow up together. Please don't share your phone or email there.</p>
+    </section>
+
+    <!-- Group requests -->
+    <section role="tabpanel" id="pane-group" aria-labelledby="tab-group" hidden>
+      <p class="lede">Ask together. Pick corners, and this page splits them into ready-to-file
+        packets of two intersections each (SDOT's limit per form) and drafts a neighborhood letter.</p>
+      <div class="buttons">
+        <button class="button" data-select="confirmed">Select all confirmed missing</button>
+        <button class="button" data-select="needs">Select everything that needs a ramp</button>
+        <button class="button" data-select="none">Clear</button>
+      </div>
+      <p class="small">Or use <strong>Add to group request</strong> on any corner.</p>
+      <div id="group-body"></div>
+
+      <h2>More ways to push as a group</h2>
+      <ul>
+        <li><strong>Split the packets.</strong> Neighbors with a disability (or caregivers) each file one packet on the ADA form. Everyone else sends the letter through the Customer Service Bureau.</li>
+        <li><strong>Write your councilmember.</strong> Look up your district on the city's <a href="https://www.seattle.gov/neighborhoods/neighborhood-districts">neighborhoods and council districts</a> page, then send the letter below. One letter signed by many households carries more weight than many separate notes.</li>
+        <li><strong>Speak at a public meeting.</strong> SDOT's <a href="https://www.seattle.gov/transportation/projects-and-programs/programs/ada-program/pedestrian-access-advisory-committee">Pedestrian Access Advisory Committee</a> and the <a href="https://www.seattle.gov/seattle-pedestrian-advisory-board">Seattle Pedestrian Advisory Board</a> take public comment.</li>
+        <li id="on-hold-tip"></li>
+      </ul>
+    </section>
+
+    <!-- List -->
+    <section role="tabpanel" id="pane-list" aria-labelledby="tab-list" hidden>
+      <p class="lede">Every corner, south to north. Select one to show it on the map.</p>
+      <div id="corner-list"></div>
+    </section>
+  </aside>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
