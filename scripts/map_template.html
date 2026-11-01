@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dayton Ave Curb Ramps</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #fff; --fg: #1d1d1f; --muted: #666; --panel: rgba(255,255,255,.95); --border: #ddd;
+    --present: #1a9850; --missing: #d73027; --partial: #f28e2b; --unknown: #9e9e9e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #161616; --fg: #eee; --muted: #aaa; --panel: rgba(30,30,30,.95); --border: #444; }
+  }
+  :root[data-theme="dark"] { --bg: #161616; --fg: #eee; --muted: #aaa; --panel: rgba(30,30,30,.95); --border: #444; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font: 14px/1.4 system-ui, -apple-system, Segoe UI, sans-serif; }
+  #map { position: absolute; inset: 0; }
+  .panel { background: var(--panel); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; max-width: 260px; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  .panel h1 { font-size: 15px; margin: 0 0 4px; display: inline; }
+  .panel summary { cursor: pointer; margin-bottom: 4px; }
+  .panel p { margin: 4px 0; color: var(--muted); font-size: 12px; }
+  .legend div { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  .sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 2px solid #fff; box-shadow: 0 0 0 1px #0004; }
+  .ring { box-shadow: 0 0 0 2px #2b6cb0; }
+  .counts { font-variant-numeric: tabular-nums; }
+  .leaflet-popup-content { font-size: 13px; min-width: 230px; }
+  .leaflet-popup-content table { border-collapse: collapse; width: 100%; }
+  .leaflet-popup-content td { padding: 2px 4px; vertical-align: top; border-top: 1px solid #eee; }
+  .leaflet-popup-content td:first-child { font-weight: 600; white-space: nowrap; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 10px; color: #fff; font-size: 12px; }
+  @media (max-width: 500px) { .panel { max-width: 180px; font-size: 12px; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+const DATA = /*__DATA__*/null;
+const COLORS = { present: "var(--present)", missing: "var(--missing)", partial: "var(--partial)",
+                 conflict: "var(--unknown)", unknown: "var(--unknown)" };
+const HEX = { present: "#1a9850", missing: "#d73027", partial: "#f28e2b", conflict: "#9e9e9e", unknown: "#9e9e9e" };
+const LABEL = { present: "Ramp present", missing: "Ramp missing", partial: "Partial (one direction missing)",
+                conflict: "Sources conflict", unknown: "Unknown" };
+
+const map = L.map("map");
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 20, maxNativeZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | ' +
+    'SDOT Curb Ramps | <a href="https://sidewalk-sea.cs.washington.edu">Project Sidewalk</a>'
+}).addTo(map);
+
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const tag = v => `<span class="tag" style="background:${HEX[v] || "#9e9e9e"}">${esc(v)}</span>`;
+
+function popup(p) {
+  const rows = [
+    ["Overall", tag(p.overall) + (p.sources_disagree ? " ⚠ sources disagree" : "")],
+    p.note && ["Note", esc(p.note)],
+    ["City (SDOT)", tag(p.city) +
+      (p.city_covers ? ` covers ${p.city_covers.split("+").map(c => c === "main" ? "crossing Dayton" : "crossing side street").join(" + ")}` : "") +
+      (p.city_install_date ? `<br>installed ${esc(p.city_install_date)}` : "") +
+      (p.city_condition ? `, condition ${esc(p.city_condition)}` : "") +
+      (p.city_placeholder_count ? `<br>${p.city_placeholder_count} unassessed placeholder record(s)` : "") +
+      (p.city_planned_project ? `<br>planned: ${esc(p.city_planned_project)}` : "")],
+    ["Project Sidewalk", tag(p.ps) +
+      (p.ps_ramp_labels || p.ps_noramp_labels ? ` ${p.ps_ramp_labels || 0} ramp / ${p.ps_noramp_labels || 0} no-ramp labels` : "") +
+      (p.ps_image_date ? `, imagery ${esc(p.ps_image_date)}` : "") +
+      (p.ps_ramp_issues ? `<br>issues: ${esc(p.ps_ramp_issues)}` : "")],
+    ["OSM", tag(p.osm) + (p.osm_kerbs ? ` ${esc(p.osm_kerbs.replace(/main:/g, "Dayton:").replace(/cross:/g, "side st:"))}` : "")],
+    p.request_filed && ["SDOT request", `filed ${esc(p.request_date)} ${esc(p.request_ref)} ${esc(p.request_status)}`],
+  ].filter(Boolean);
+  return `<strong>Dayton Ave N &amp; ${esc(p.cross_street)}, ${esc(p.corner)} corner</strong>` +
+    (p.corner_type !== "corner" ? `<br><em>${esc(p.corner_type)}</em>` : "") +
+    `<table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>` +
+    `<p style="margin:6px 0 0;color:#888;font-size:11px">${esc(p.corner_id)}</p>`;
+}
+
+const markers = [];
+const radiusFor = (z, corner) => (z >= 19 ? 10 : z >= 18 ? 8 : z >= 17 ? 6 : 4) - (corner ? 0 : 1);
+const counts = {};
+for (const f of DATA.features) {
+  const p = f.properties;
+  counts[p.overall] = (counts[p.overall] || 0) + 1;
+  const [lon, lat] = f.geometry.coordinates;
+  const m = L.circleMarker([lat, lon], {
+    radius: radiusFor(17, p.corner_type === "corner"),
+    color: p.request_filed ? "#2b6cb0" : "#fff",
+    weight: p.request_filed ? 3 : 2,
+    fillColor: HEX[p.overall], fillOpacity: 0.95,
+    dashArray: p.overall === "conflict" ? "3 3" : null,
+  }).addTo(map).bindPopup(popup(p));
+  m.isCorner = p.corner_type === "corner";
+  markers.push(m);
+}
+const resize = () => markers.forEach(m => m.setRadius(radiusFor(map.getZoom(), m.isCorner)));
+map.on("zoomend", resize);
+
+map.fitBounds(L.latLngBounds(DATA.features.map(f => [f.geometry.coordinates[1], f.geometry.coordinates[0]])), { padding: [20, 20] });
+resize();
+
+const info = L.control({ position: "topright" });
+info.onAdd = () => {
+  const d = L.DomUtil.create("details", "panel legend");
+  d.open = window.innerWidth > 600;
+  const f = DATA.metadata.fetched;
+  d.innerHTML = `<summary><h1>Dayton Ave N curb ramps</h1></summary><p>N 60th – N 85th St, Phinney Ridge</p>` +
+    ["present", "missing", "partial", "conflict", "unknown"].map(k =>
+      `<div class="counts"><span class="sw" style="background:${HEX[k]}"></span>${LABEL[k]} (${counts[k] || 0})</div>`).join("") +
+    `<div><span class="sw ring" style="background:#fff"></span>SDOT request filed</div>` +
+    `<p>Data fetched ${esc((f.city || "").slice(0, 10))}. Tap a corner for per-source detail.</p>`;
+  L.DomEvent.disableClickPropagation(d);
+  return d;
+};
+info.addTo(map);
+map.on("popupopen", () => info.getContainer().style.visibility = "hidden");
+map.on("popupclose", () => info.getContainer().style.visibility = "");
+</script>
+</body>
+</html>
