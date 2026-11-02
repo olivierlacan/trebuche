@@ -1,28 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a person walking down a curb ramp cut into a curb">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a person standing at the top of a curb ramp">
   <!-- Three-quarter view of a curb cut: the sidewalk (yellow) with its curb
        face (dark yellow) above the street (gray-green). The ramp (cream) is cut
-       through the curb, with sloped side flares and warning domes at its foot,
-       and a pedestrian walking down it toward the street. -->
+       through the curb, with sloped side flares and warning domes at its foot.
+       A person stands on the sidewalk at the top of the ramp, about to use it. -->
   <defs><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
   <g clip-path="url(#badge)">
     <rect width="64" height="64" fill="#1f2a24"/>
     <!-- sidewalk top -->
-    <rect y="14" width="64" height="26" fill="#f4c542"/>
+    <rect y="25" width="64" height="17" fill="#f4c542"/>
     <!-- curb face -->
-    <rect y="40" width="64" height="9" fill="#9c7a1c"/>
+    <rect y="42" width="64" height="8" fill="#9c7a1c"/>
     <!-- street -->
-    <rect y="49" width="64" height="15" fill="#3a4a40"/>
+    <rect y="50" width="64" height="14" fill="#3a4a40"/>
     <!-- the cut: ramp from the sidewalk down to the street, with sloped side flares -->
-    <path d="M22 22H42L44 49H20Z" fill="#f4f1ea"/>
-    <path d="M10 40L22 22L20 49Z" fill="#d6ab2c"/>
-    <path d="M54 40L42 22L44 49Z" fill="#d6ab2c"/>
+    <path d="M23 31H41L43 50H21Z" fill="#f4f1ea"/>
+    <path d="M12 42L23 31L21 50Z" fill="#d6ab2c"/>
+    <path d="M52 42L41 31L43 50Z" fill="#d6ab2c"/>
     <!-- detectable-warning domes at the foot of the ramp -->
-    <g fill="#9c7a1c"><circle cx="23.5" cy="47.8" r="0.95"/><circle cx="27" cy="47.8" r="0.95"/><circle cx="30.3" cy="47.8" r="0.95"/><circle cx="33.7" cy="47.8" r="0.95"/><circle cx="37" cy="47.8" r="0.95"/><circle cx="40.5" cy="47.8" r="0.95"/></g>
-    <!-- walker on the ramp, heading to the street -->
-    <g stroke="#1f2a24" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M32 29V37.5"/><path d="M32 37.5L29.6 45"/><path d="M32 37.5L34.4 45"/>
-      <path d="M32 30.6L28 35.8"/><path d="M32 30.6L36 35.8"/>
+    <g fill="#9c7a1c"><circle cx="24.5" cy="48.7" r="0.9"/><circle cx="27.8" cy="48.7" r="0.9"/><circle cx="30.4" cy="48.7" r="0.9"/><circle cx="33.6" cy="48.7" r="0.9"/><circle cx="36.2" cy="48.7" r="0.9"/><circle cx="39.5" cy="48.7" r="0.9"/></g>
+    <!-- person standing on the sidewalk at the top of the ramp:
+         cream with a dark outline so it reads on both the sky and the sidewalk -->
+    <g stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <g stroke="#1f2a24" stroke-width="5.2">
+        <path d="M32 12.6V20.6"/><path d="M32 20.6L29.2 28.4"/><path d="M32 20.6L34.8 28.4"/><path d="M32 14L28.2 19"/><path d="M32 14L35.8 19"/>
+      </g>
+      <g stroke="#f4f1ea" stroke-width="3.2">
+        <path d="M32 12.6V20.6"/><path d="M32 20.6L29.2 28.4"/><path d="M32 20.6L34.8 28.4"/><path d="M32 14L28.2 19"/><path d="M32 14L35.8 19"/>
+      </g>
     </g>
-    <circle cx="32" cy="24.6" r="3.5" fill="#1f2a24"/>
+    <circle cx="32" cy="8" r="3.4" fill="#f4f1ea"/>
   </g>
 </svg>
