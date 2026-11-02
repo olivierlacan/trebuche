@@ -1,26 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a curb cut with a check mark engraved in it">
-  <!-- Three-quarter view of a curb cut: the sidewalk (yellow) with its curb
-       face (dark yellow) above the street (gray-green). The ramp is the same
-       concrete as the sidewalk, defined by its sloped side flares and the notch
-       it makes in the curb face. A check mark is engraved in the deep part of
-       the cut: a dark groove with a light lower edge. -->
-  <defs><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a curb ramp with a yellow warning panel and a check mark carved into it">
+  <!-- Three-quarter view of a curb ramp: concrete sidewalk and curb face above
+       the street, the ramp cut through the curb with sloped side flares, and a
+       yellow detectable-warning panel (truncated domes in a grid) across the
+       foot of the ramp, as on most Seattle ramps. A check mark is carved into
+       the ramp, lit from the upper left: shadow on the upper-left inside wall,
+       highlight on the lower-right one. -->
+  <defs>
+    <clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath>
+    <mask id="groove" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <path d="M26.2 31.6L30.8 36.2L38.6 25.6" fill="none" stroke="#fff" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
   <g clip-path="url(#badge)">
     <rect width="64" height="64" fill="#1f2a24"/>
-    <!-- sidewalk top -->
-    <rect y="9" width="64" height="31" fill="#f4c542"/>
+    <!-- sidewalk -->
+    <rect y="9" width="64" height="31" fill="#e7e1d2"/>
     <!-- curb face -->
-    <rect y="40" width="64" height="9" fill="#9c7a1c"/>
+    <rect y="40" width="64" height="9" fill="#b3aa94"/>
     <!-- street -->
     <rect y="49" width="64" height="15" fill="#3a4a40"/>
-    <!-- the cut: ramp down to the street, with sloped side flares -->
-    <path d="M22 18H42L44 49H20Z" fill="#f4c542"/>
-    <path d="M9 40L22 18L20 49Z" fill="#d6ab2c"/>
-    <path d="M55 40L42 18L44 49Z" fill="#d6ab2c"/>
-    <!-- engraved check mark -->
-    <g fill="none" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M25.6 39.4L30.4 44.4L38.8 32.8" stroke="#fde9a6" transform="translate(0.7 0.8)"/>
-      <path d="M25.6 39.4L30.4 44.4L38.8 32.8" stroke="#8c6c14"/>
+    <!-- ramp and side flares -->
+    <path d="M22 18H42L44 49H20Z" fill="#e7e1d2"/>
+    <path d="M9 40L22 18L20 49Z" fill="#d2cab7"/>
+    <path d="M55 40L42 18L44 49Z" fill="#d2cab7"/>
+    <!-- detectable-warning panel -->
+    <path d="M20.48 41.6H43.52L44.00 49H20.00Z" fill="#f4c542"/>
+    <g fill="#c0920f"><circle cx="21.99" cy="43.0" r="0.62"/><circle cx="24.85" cy="43.0" r="0.62"/><circle cx="27.71" cy="43.0" r="0.62"/><circle cx="30.57" cy="43.0" r="0.62"/><circle cx="33.43" cy="43.0" r="0.62"/><circle cx="36.29" cy="43.0" r="0.62"/><circle cx="39.15" cy="43.0" r="0.62"/><circle cx="42.01" cy="43.0" r="0.62"/><circle cx="21.85" cy="45.2" r="0.68"/><circle cx="24.75" cy="45.2" r="0.68"/><circle cx="27.65" cy="45.2" r="0.68"/><circle cx="30.55" cy="45.2" r="0.68"/><circle cx="33.45" cy="45.2" r="0.68"/><circle cx="36.35" cy="45.2" r="0.68"/><circle cx="39.25" cy="45.2" r="0.68"/><circle cx="42.15" cy="45.2" r="0.68"/><circle cx="21.70" cy="47.5" r="0.74"/><circle cx="24.64" cy="47.5" r="0.74"/><circle cx="27.58" cy="47.5" r="0.74"/><circle cx="30.53" cy="47.5" r="0.74"/><circle cx="33.47" cy="47.5" r="0.74"/><circle cx="36.42" cy="47.5" r="0.74"/><circle cx="39.36" cy="47.5" r="0.74"/><circle cx="42.30" cy="47.5" r="0.74"/></g>
+    <g mask="url(#groove)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- light from the upper left: the lower-right inside wall catches it -->
+      <path d="M26.2 31.6L30.8 36.2L38.6 25.6" stroke="#fffcf3" stroke-width="4.4"/>
+      <!-- the upper-left inside wall is in shadow -->
+      <path d="M26.2 31.6L30.8 36.2L38.6 25.6" stroke="#7d7663" stroke-width="4.4" transform="translate(-0.9 -0.9)"/>
+      <!-- groove floor -->
+      <path d="M26.2 31.6L30.8 36.2L38.6 25.6" stroke="#c9c1ad" stroke-width="2.7" transform="translate(0.15 0.15)"/>
     </g>
   </g>
 </svg>
