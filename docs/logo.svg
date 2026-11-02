@@ -1,33 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a person standing at the top of a curb ramp">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a curb cut with a check mark engraved in it">
   <!-- Three-quarter view of a curb cut: the sidewalk (yellow) with its curb
-       face (dark yellow) above the street (gray-green). The ramp (cream) is cut
-       through the curb, with sloped side flares and warning domes at its foot.
-       A person stands on the sidewalk at the top of the ramp, about to use it. -->
+       face (dark yellow) above the street (gray-green). The ramp is the same
+       concrete as the sidewalk, defined by its sloped side flares and the notch
+       it makes in the curb face. A check mark is engraved in the deep part of
+       the cut: a dark groove with a light lower edge. -->
   <defs><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
   <g clip-path="url(#badge)">
     <rect width="64" height="64" fill="#1f2a24"/>
     <!-- sidewalk top -->
-    <rect y="25" width="64" height="17" fill="#f4c542"/>
+    <rect y="9" width="64" height="31" fill="#f4c542"/>
     <!-- curb face -->
-    <rect y="42" width="64" height="8" fill="#9c7a1c"/>
+    <rect y="40" width="64" height="9" fill="#9c7a1c"/>
     <!-- street -->
-    <rect y="50" width="64" height="14" fill="#3a4a40"/>
-    <!-- the cut: ramp from the sidewalk down to the street, with sloped side flares -->
-    <path d="M23 31H41L43 50H21Z" fill="#f4f1ea"/>
-    <path d="M12 42L23 31L21 50Z" fill="#d6ab2c"/>
-    <path d="M52 42L41 31L43 50Z" fill="#d6ab2c"/>
-    <!-- detectable-warning domes at the foot of the ramp -->
-    <g fill="#9c7a1c"><circle cx="24.5" cy="48.7" r="0.9"/><circle cx="27.8" cy="48.7" r="0.9"/><circle cx="30.4" cy="48.7" r="0.9"/><circle cx="33.6" cy="48.7" r="0.9"/><circle cx="36.2" cy="48.7" r="0.9"/><circle cx="39.5" cy="48.7" r="0.9"/></g>
-    <!-- person standing on the sidewalk at the top of the ramp:
-         cream with a dark outline so it reads on both the sky and the sidewalk -->
-    <g stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <g stroke="#1f2a24" stroke-width="5.2">
-        <path d="M32 12.6V20.6"/><path d="M32 20.6L29.2 28.4"/><path d="M32 20.6L34.8 28.4"/><path d="M32 14L28.2 19"/><path d="M32 14L35.8 19"/>
-      </g>
-      <g stroke="#f4f1ea" stroke-width="3.2">
-        <path d="M32 12.6V20.6"/><path d="M32 20.6L29.2 28.4"/><path d="M32 20.6L34.8 28.4"/><path d="M32 14L28.2 19"/><path d="M32 14L35.8 19"/>
-      </g>
+    <rect y="49" width="64" height="15" fill="#3a4a40"/>
+    <!-- the cut: ramp down to the street, with sloped side flares -->
+    <path d="M22 18H42L44 49H20Z" fill="#f4c542"/>
+    <path d="M9 40L22 18L20 49Z" fill="#d6ab2c"/>
+    <path d="M55 40L42 18L44 49Z" fill="#d6ab2c"/>
+    <!-- engraved check mark -->
+    <g fill="none" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M25.6 39.4L30.4 44.4L38.8 32.8" stroke="#fde9a6" transform="translate(0.7 0.8)"/>
+      <path d="M25.6 39.4L30.4 44.4L38.8 32.8" stroke="#8c6c14"/>
     </g>
-    <circle cx="32" cy="8" r="3.4" fill="#f4f1ea"/>
   </g>
 </svg>
