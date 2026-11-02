@@ -5,8 +5,9 @@
        panel lies nearly flat, so its truncated domes show in profile, as bumps.
        The curb is drawn about twice as tall as it is relative to a real ramp's
        width so the shape still reads at browser-tab size. Inside the cut, the
-       ramp surface rises away from the street, solid at the warning band and
-       thinning toward sidewalk level. The sky follows the viewer's color
+       ramp surface rises away from the street. Its top edge, where it meets the
+       sidewalk farther back, sits below the curb's top line, as it would from
+       street level. The sky follows the viewer's color
        scheme: blue with the sun in light mode, stars and a crescent moon in the
        same spot in dark mode (an embedded prefers-color-scheme media query). -->
   <defs>
@@ -36,7 +37,7 @@
     </style>
     <linearGradient id="ramp" x1="0" y1="1" x2="0" y2="0">
       <stop offset="0" stop-color="#c9c1ad" stop-opacity="0.85"/>
-      <stop offset="1" stop-color="#c9c1ad" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#c9c1ad" stop-opacity="0.55"/>
     </linearGradient><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
   <g clip-path="url(#badge)">
     <!-- sky: sunny in light mode, starry in dark mode (follows the viewer's setting) -->
@@ -56,7 +57,9 @@
     <!-- curb face, with the cut sloping down to the street -->
     <path d="M0 29H12L20 40H44L52 29H64V40H0Z" fill="#d6cfbd"/>
     <!-- ramp surface rising away from the street -->
-    <path d="M12 29H52L45.89 37.4H18.11Z" fill="url(#ramp)"/>
+    <path d="M14.47 32.4H49.53L45.89 37.4H18.11Z" fill="url(#ramp)"/>
+    <!-- top edge of the ramp, where it meets the sidewalk farther back: lower than the curb top -->
+    <path d="M14.47 32.4H49.53" stroke="#d6cfbd" stroke-width="0.8"/>
     <!-- edges of the cut, so the notch keeps its shape at small sizes -->
     <path d="M12 29L20 40M52 29L44 40" stroke="#a49b84" stroke-width="1" fill="none"/>
     <path d="M18.11 37.40H45.89L44 40H20Z" fill="#f4c542"/>
