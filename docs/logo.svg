@@ -4,10 +4,11 @@
        detectable-warning panel at the foot of the ramp. From this low angle the
        panel lies nearly flat, so its truncated domes show in profile, as bumps.
        The curb is drawn about twice as tall as it is relative to a real ramp's
-       width so the shape still reads at browser-tab size. A faint gradient
-       in the cut hints at the ramp surface rising away from the street. The sky
-       follows the viewer's color scheme: sunny and blue in light mode, starry
-       in dark mode (an embedded prefers-color-scheme media query). -->
+       width so the shape still reads at browser-tab size. Inside the cut, the
+       ramp surface rises away from the street, solid at the warning band and
+       thinning toward sidewalk level. The sky follows the viewer's color
+       scheme: blue with the sun in light mode, stars and a crescent moon in the
+       same spot in dark mode (an embedded prefers-color-scheme media query). -->
   <defs>
     <linearGradient id="day" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2f7fd0"/>
@@ -21,13 +22,21 @@
       <stop offset="0" stop-color="#0a1226"/>
       <stop offset="0.6" stop-color="#1c2a48"/>
     </linearGradient>
+    <radialGradient id="moon-glow">
+      <stop offset="0" stop-color="#dfe8ff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#dfe8ff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="crescent" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <circle cx="47" cy="13" r="5.2" fill="#fff"/>
+      <circle cx="49.6" cy="11.2" r="4.4" fill="#000"/>
+    </mask>
     <style>
       .night { display: none; }
       @media (prefers-color-scheme: dark) { .day { display: none; } .night { display: inline; } }
     </style>
     <linearGradient id="ramp" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#8a8576" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#8a8576" stop-opacity="0"/>
+      <stop offset="0" stop-color="#c9c1ad" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#c9c1ad" stop-opacity="0.3"/>
     </linearGradient><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
   <g clip-path="url(#badge)">
     <!-- sky: sunny in light mode, starry in dark mode (follows the viewer's setting) -->
@@ -38,7 +47,9 @@
     </g>
     <g class="night">
       <rect width="64" height="64" fill="url(#night)"/>
-      <circle cx="8" cy="7" r="0.75" fill="#fff" fill-opacity="0.95"/><circle cx="17" cy="15" r="0.5" fill="#fff" fill-opacity="0.7"/><circle cx="26" cy="5" r="0.6" fill="#fff" fill-opacity="0.85"/><circle cx="33" cy="12" r="0.45" fill="#fff" fill-opacity="0.6"/><circle cx="41" cy="6" r="0.8" fill="#fff" fill-opacity="1"/><circle cx="50" cy="16" r="0.5" fill="#fff" fill-opacity="0.7"/><circle cx="57" cy="9" r="0.6" fill="#fff" fill-opacity="0.85"/><circle cx="12" cy="22" r="0.45" fill="#fff" fill-opacity="0.55"/><circle cx="46" cy="22" r="0.5" fill="#fff" fill-opacity="0.6"/><circle cx="22" cy="10" r="0.4" fill="#fff" fill-opacity="0.5"/><circle cx="36" cy="20" r="0.4" fill="#fff" fill-opacity="0.5"/><circle cx="59" cy="19" r="0.45" fill="#fff" fill-opacity="0.55"/>
+      <circle cx="8" cy="7" r="0.75" fill="#fff" fill-opacity="0.95"/><circle cx="17" cy="15" r="0.5" fill="#fff" fill-opacity="0.7"/><circle cx="26" cy="5" r="0.6" fill="#fff" fill-opacity="0.85"/><circle cx="33" cy="12" r="0.45" fill="#fff" fill-opacity="0.6"/><circle cx="41" cy="6" r="0.8" fill="#fff" fill-opacity="1"/><circle cx="57" cy="9" r="0.6" fill="#fff" fill-opacity="0.85"/><circle cx="12" cy="22" r="0.45" fill="#fff" fill-opacity="0.55"/><circle cx="46" cy="22" r="0.5" fill="#fff" fill-opacity="0.6"/><circle cx="22" cy="10" r="0.4" fill="#fff" fill-opacity="0.5"/><circle cx="36" cy="20" r="0.4" fill="#fff" fill-opacity="0.5"/><circle cx="59" cy="19" r="0.45" fill="#fff" fill-opacity="0.55"/>
+      <circle cx="47" cy="13" r="10" fill="url(#moon-glow)"/>
+      <circle cx="47" cy="13" r="5.2" fill="#f4efd8" mask="url(#crescent)"/>
     </g>
     <!-- street -->
     <rect y="40" width="64" height="24" fill="#3a4a40"/>
@@ -46,6 +57,8 @@
     <path d="M0 29H12L20 40H44L52 29H64V40H0Z" fill="#d6cfbd"/>
     <!-- ramp surface rising away from the street -->
     <path d="M12 29H52L45.89 37.4H18.11Z" fill="url(#ramp)"/>
+    <!-- edges of the cut, so the notch keeps its shape at small sizes -->
+    <path d="M12 29L20 40M52 29L44 40" stroke="#a49b84" stroke-width="1" fill="none"/>
     <path d="M18.11 37.40H45.89L44 40H20Z" fill="#f4c542"/>
     <!-- domes in profile -->
     <g fill="#f4c542"><circle cx="20.06" cy="37.40" r="1.15"/><circle cx="24.04" cy="37.40" r="1.15"/><circle cx="28.02" cy="37.40" r="1.15"/><circle cx="32.00" cy="37.40" r="1.15"/><circle cx="35.98" cy="37.40" r="1.15"/><circle cx="39.96" cy="37.40" r="1.15"/><circle cx="43.94" cy="37.40" r="1.15"/></g>
