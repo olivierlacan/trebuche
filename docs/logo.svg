@@ -1,18 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Trebuche: a curb cut seen from the street, with a yellow warning band">
   <!-- A curb cut seen from the street at ground level: the concrete curb face
-       with a notch sloping down to street level, and the yellow
-       detectable-warning panel across the foot of the ramp (yellow, as on most
-       Seattle ramps), with its truncated domes. Kept to a few bold shapes so
-       it still reads as a browser-tab icon. -->
+       with a wide, shallow cut sloping down to street level, and the yellow
+       detectable-warning panel at the foot of the ramp. From this low angle the
+       panel lies nearly flat, so its truncated domes show in profile, as bumps.
+       The curb is drawn about twice as tall as it is relative to a real ramp's
+       width so the shape still reads at browser-tab size. -->
   <defs><clipPath id="badge"><rect width="64" height="64" rx="14"/></clipPath></defs>
   <g clip-path="url(#badge)">
     <rect width="64" height="64" fill="#1f2a24"/>
     <!-- street -->
-    <rect y="46" width="64" height="18" fill="#3a4a40"/>
+    <rect y="40" width="64" height="24" fill="#3a4a40"/>
     <!-- curb face, with the cut sloping down to the street -->
-    <path d="M0 22H12L22 46H42L52 22H64V46H0Z" fill="#d6cfbd"/>
-    <!-- detectable-warning panel at the foot of the ramp, with its domes -->
-    <path d="M19.29 39.5H44.71L42 46H22Z" fill="#f4c542"/>
-    <g fill="#c0920f"><circle cx="22.85" cy="42.75" r="1.05"/><circle cx="25.90" cy="42.75" r="1.05"/><circle cx="28.95" cy="42.75" r="1.05"/><circle cx="32.00" cy="42.75" r="1.05"/><circle cx="35.05" cy="42.75" r="1.05"/><circle cx="38.10" cy="42.75" r="1.05"/><circle cx="41.15" cy="42.75" r="1.05"/></g>
+    <path d="M0 29H12L20 40H44L52 29H64V40H0Z" fill="#d6cfbd"/>
+    <path d="M18.11 37.40H45.89L44 40H20Z" fill="#f4c542"/>
+    <!-- domes in profile -->
+    <g fill="#f4c542"><circle cx="20.06" cy="37.40" r="1.15"/><circle cx="24.04" cy="37.40" r="1.15"/><circle cx="28.02" cy="37.40" r="1.15"/><circle cx="32.00" cy="37.40" r="1.15"/><circle cx="35.98" cy="37.40" r="1.15"/><circle cx="39.96" cy="37.40" r="1.15"/><circle cx="43.94" cy="37.40" r="1.15"/></g>
   </g>
 </svg>
