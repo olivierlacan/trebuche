@@ -112,9 +112,9 @@ h3 { font-size: 18px; margin: 0 0 6px; line-height: 1.3; }
 @media (max-width: 960px) { .swipe-hint { display: block; } }
 
 /* Logo */
-.hero-logo { display: block; width: 72px; height: 72px; margin: 0 0 18px; border-radius: 16px; box-shadow: 0 0 0 1px rgba(244, 241, 234, .18); }
+.hero-logo { display: block; width: 76px; height: 76px; margin: 0 0 18px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .35)); }
 .foot-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-bottom: 18px; }
-.foot-brand img { border-radius: 9px; }
+.foot-brand img { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .2)); }
 
 /* Breadcrumbs (on dark hero) */
 .crumbs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--hero-muted); margin: 0 0 12px; }

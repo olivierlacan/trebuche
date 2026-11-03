@@ -127,6 +127,32 @@ Checked against seattle.gov on 2026-11-01:
 number) so the group can see what's been filed. It asks people not to post contact
 details. Copy filed requests into `data/requests.csv` to show them on the map.
 
+## Logo
+
+`ruby scripts/logo.rb` draws the logo: a City of Seattle Type 422A curb ramp seen from
+above at a slight angle, leading to a crosswalk. Every proportion comes from the 2026
+City of Seattle Standard Plans and Specifications (Seattle Public Utilities and SDOT):
+
+- **422a:** 5 ft ramp, triangular wings, through joints along the wings and across the
+  top, 4 ft landing (outlined by through joints)
+- **422k:** 2 ft yellow detectable-warning panel, truncated domes in an in-line grid
+- **420 / Spec 8-14.3:** 2 ft scoring (drawn faint), contraction joints about 6 ft apart
+  (the spec allows up to 15 ft), 6 ft minimum sidewalk, planting strip beyond
+- **712:** "ladder style" crosswalk (`XWK`): pairs of 8 in bars with an 8 in gap,
+  parallel to the curb, 5 ft apart, centered on the ramp
+
+It writes two drawings, the way app icons are made per size:
+
+| File | Use |
+|---|---|
+| `docs/logo.svg` | Detailed: page headers, link previews |
+| `docs/favicon.svg` | Simplified for 16–32 px: browser tabs (tighter crop, more contrast, no texture) |
+
+`ruby scripts/logo.rb --bleed out.svg` writes a version without the rounded outline,
+used to render `docs/apple-touch-icon.png` (phones apply their own mask). The link
+preview images (`docs/og.png`, `docs/seattle/phinney-ridge/og.png`) are rendered from
+`logo.svg`. The previous street-level logo is kept as `docs/logo-street.svg`.
+
 ## Publishing
 
 `.github/workflows/pages.yml` refetches every source, rebuilds, and deploys `docs/` to
