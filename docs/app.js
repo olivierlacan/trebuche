@@ -134,6 +134,7 @@ function requestText(c) {
     "What we know:",
     ...evidence(c).map(e => `- ${e}`),
     "",
+    "Standard: City of Seattle Standard Plans 422a (curb ramps) and 422k (detectable warnings), 2026 edition.",
     `Map of this corner: ${shareUrl({ corner: shortId(c.corner_id) })}`,
   ];
   return lines.join("\n");
