@@ -62,6 +62,8 @@ one), and a table by neighborhood with survey coverage. Downloads are cached in
 | A street | `docs/seattle/<neighborhood>/index.html` | e.g. Phinney Ridge for Dayton Ave N: live counts, the corner strip, goals, how to help |
 | Its map | `docs/seattle/<neighborhood>/map.html` | The street's map (below) |
 
+Screenshots of pages, used in pull requests, live in `screenshots/` (outside `docs/`, so they aren't deployed). Keep them about 1200 px wide.
+
 Shared files live at the top of `docs/`: `logo.svg`, `site.css` (text pages), `style.css`
 and `app.js` (map), `area.js` (a street's landing page), `area-cards.js` (street cards,
 drawn from the generated `areas.js`). The street pages read their own `data.js`.
