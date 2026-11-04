@@ -3,6 +3,7 @@
 "use strict";
 
 const DATA = window.RAMPS;
+const AREA = DATA.area;
 const corners = DATA.corners;
 const DAY = 864e5;
 const today = Date.now();
@@ -57,17 +58,21 @@ const stats = [
   [count("partial"), mark("partial", mid, 28), "corners with a ramp for <strong>only one</strong> of their two crossings"],
   [count("ramp"), mark("ramp", rgb(GREEN), 28), "corners with ramps for both crossings"],
   [onHold.length, `<svg width="28" height="28" aria-hidden="true"><circle cx="14" cy="14" r="11" fill="none" stroke="var(--planned)" stroke-width="3.5" stroke-dasharray="5 3"/></svg>`,
-    "corners in an SDOT ramp project on hold since 2022"],
+    "corners in an SDOT ramp project that's on hold"],
 ];
 document.getElementById("stat-grid").innerHTML = stats.map(([n, icon, label]) =>
   `<div class="stat"><div class="n">${icon}<span>${n}</span></div><div class="label">${label}</div></div>`).join("");
 
 if (onHold.length) {
-  const where = [...new Set(onHold.map(baseStreet))].map(s => s.replace(/^N /, "")).join(", ");
+  const where = [...new Set(onHold.map(baseStreet))].join(", ");
   const stillNeed = onHold.filter(c => c.overall === "missing" || c.overall === "partial").length;
+  const wos = onHold.flatMap(c => c.work_orders || []).filter(w => (w.project || "").includes("on-hold"));
+  const names = [...new Set(wos.map(w => `"${w.project}"`))].join(" and ");
+  const since = wos.map(w => w.started).filter(Boolean).sort()[0];
   document.getElementById("goal-onhold").textContent =
-    `${onHold.length} Dayton corners (at ${where}) have been part of SDOT's "2023 PEMS DWW ramps on-hold" project since 2022, ` +
-    `and ${stillNeed} of them still lack a ramp for at least one crossing. Asking the city to finish what it started is the quickest win.`;
+    `${onHold.length} ${AREA.short} corners (at ${where}) are part of SDOT's ${names} project` +
+    (since ? `, on hold since ${since.slice(0, 4)}` : "") +
+    `, and ${stillNeed} of them still lack a ramp for at least one crossing. Asking the city to finish what it started is the quickest win.`;
 }
 
 // ------------------------------------------------------------ strip
@@ -82,9 +87,9 @@ document.getElementById("strip").innerHTML = [...byInter].map(([id, q]) => {
   const cell = pos => {
     const c = q[pos];
     if (!c) return `<span></span>`;
-    const label = `${WORDS[pos]} corner, Dayton Ave N & ${baseStreet(c)}: ${LABELS[kind(c)]}` +
+    const label = `${WORDS[pos]} corner, ${AREA.street} & ${baseStreet(c)}: ${LABELS[kind(c)]}` +
       (c.corner_type !== "corner" ? " (side of a T-intersection)" : "");
-    return `<a href="map.html?corner=${encodeURIComponent(c.corner_id.replace(/^dayton-/, ""))}" title="${label}" aria-label="${label}">` +
+    return `<a href="map.html?corner=${encodeURIComponent(c.corner_id.slice(AREA.id_prefix.length + 1))}" title="${label}" aria-label="${label}">` +
       `${mark(kind(c), ageColor(c.city_install_date), c.corner_type === "corner" ? 13 : 10)}</a>`;
   };
   return `<div class="col">
@@ -101,7 +106,16 @@ document.getElementById("legend").innerHTML = [
   [mark("q", null), "Not sure"],
   [`<svg width="24" height="6" aria-hidden="true"><rect width="24" height="4" y="1" rx="2" fill="var(--planned)"/></svg>`, "SDOT work planned"],
 ].map(([svg, t]) => `<li>${svg}<span>${t}</span></li>`).join("") +
-  `<li class="small">Numbers are cross streets; 64w/64e and 65w/65e are the two halves of Dayton's jogs.</li>`;
+  jogNote();
+
+// "64w/64e and 65w/65e are the two halves of Dayton's jogs", if the street jogs.
+function jogNote() {
+  const jogs = [...new Set(corners.map(c => c.intersection_id).filter(id => /W$/.test(id)).map(id => id.slice(0, -1)))];
+  const halves = jogs.map(n => `${n}w/${n}e`);
+  const list = halves.length > 1 ? `${halves.slice(0, -1).join(", ")} and ${halves.at(-1)}` : halves[0];
+  return `<li class="small">Numbers are cross streets` +
+    (jogs.length ? `; ${list} ${jogs.length > 1 ? "are" : "is"} the two halves of ${AREA.short}'s jog${jogs.length > 1 ? "s" : ""}` : "") + `.</li>`;
+}
 
 // ------------------------------------------------------------ freshness
 const gen = (DATA.generated || "").slice(0, 10);

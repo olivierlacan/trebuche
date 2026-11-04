@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seattle Curb Ramp Hotspots</title>
+<meta name="description" content="Where Seattle's missing curb ramps cluster: every intersection in the city checked against SDOT's curb ramp and sidewalk inventories and Project Sidewalk, grouped into hotspots neighbors can take on together.">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a24">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Where Seattle's missing curb ramps cluster">
+<meta property="og:description" content="Every Seattle intersection checked for curb ramps. Find the hotspot near you and organize with your neighbors to get ramps built.">
+<meta property="og:url" content="https://olivierlacan.github.io/trebuche/seattle/hotspots/">
+<meta property="og:image" content="https://olivierlacan.github.io/trebuche/seattle/hotspots/og.png">
+<meta property="og:image:alt" content="Map of Seattle with clusters of intersections missing curb ramps, and the words: Where Seattle's missing curb ramps cluster">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../../site.css">
+<style>
+  #hotmap { height: min(70vh, 620px); border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+  .map-tools { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 10px 0 0; font-size: 15px; }
+  .map-tools label { display: flex; gap: 6px; align-items: center; }
+  .hot-label { background: #1d1d1f; color: #fff; border: 2px solid #fff; border-radius: 999px; font: 700 13px/22px system-ui, sans-serif;
+    width: 26px; height: 26px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+  .hot-label.sel { background: #f4c542; color: #1d1d1f; }
+  .spots { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .spot { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .spot h3 { margin: 0; font-size: 18px; line-height: 1.25; }
+  .spot .rank { font-weight: 700; color: var(--accent); font-size: 13px; }
+  .spot .big { font-size: 15px; }
+  .spot .big strong { font-size: 24px; font-variant-numeric: tabular-nums; }
+  .spot .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .spot .bar span { display: block; height: 100%; background: var(--missing); }
+  .spot ul { margin: 2px 0 6px; padding-left: 18px; color: var(--muted); font-size: 15px; }
+  .spot .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+  .spot .acts a, .spot .acts button { font: 600 14px/1 system-ui, sans-serif; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--fg); text-decoration: none; cursor: pointer; }
+  .spot .acts .go { background: #f4c542; border-color: #f4c542; color: #1d1d1f; }
+  table.hoods { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+  table.hoods th, table.hoods td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; }
+  table.hoods th:first-child, table.hoods td:first-child { text-align: left; }
+  table.hoods th { font-size: 13px; color: var(--muted); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  table.hoods th[aria-sort] { color: var(--fg); }
+  .table-scroll { overflow-x: auto; }
+  .share { display: inline-block; width: 60px; height: 8px; background: var(--line); border-radius: 4px; vertical-align: middle; margin-left: 8px; overflow: hidden; }
+  .share span { display: block; height: 100%; background: var(--missing); }
+  @media (max-width: 560px) { .share { display: none; } }
+  .leaflet-popup-content { font: 14px/1.4 system-ui, sans-serif; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <a href="../../" aria-label="Trebuche home"><img class="hero-logo" src="../../logo.svg" width="76" height="76" alt=""></a>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Trebuche</a><span aria-hidden="true">›</span><a href="../">Seattle</a><span aria-hidden="true">›</span><span aria-current="page">Hotspots</span></nav>
+    <h1>Where Seattle's missing curb ramps cluster</h1>
+    <p class="lede" id="lede">Every intersection in the city, checked against SDOT's own records and volunteer street surveys.
+      Missing ramps aren't spread evenly: they bunch up in a few neighborhoods. Find the one near you, and take it on with your neighbors.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#spots-h">See the hotspots</a>
+      <a class="btn" href="#organize-h">How to organize</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="wrap stats" aria-labelledby="now-h">
+    <h2 id="now-h">Citywide</h2>
+    <p class="section-lede">Counting street intersections that have a sidewalk next to them.</p>
+    <div class="stat-grid" id="stat-grid"></div>
+  </section>
+
+  <section class="wrap" aria-labelledby="map-h">
+    <h2 id="map-h">The map</h2>
+    <p class="section-lede">Each square is about four blocks across (450 m), shaded by how many of its intersections have no curb ramp.
+      Numbers mark the hotspots below. Zoom in to see each intersection.</p>
+    <div id="hotmap" role="application" aria-label="Map of Seattle intersections without curb ramps"></div>
+    <div class="map-tools">
+      <label><input type="checkbox" id="show-all"> Also show intersections with ramps and unknowns</label>
+      <span class="small" id="map-key"></span>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="spots-h">
+    <h2 id="spots-h">The hotspots</h2>
+    <p class="section-lede" id="spots-lede">Groups of neighboring blocks where many intersections have no ramp, largest first.
+      The streets listed are the ones that come up most.</p>
+    <ol class="spots" id="spots"></ol>
+    <p><button class="btn" id="more-spots" type="button" hidden>Show more hotspots</button></p>
+  </section>
+
+  <section class="wrap" aria-labelledby="hoods-h">
+    <h2 id="hoods-h">By neighborhood</h2>
+    <p class="section-lede">Neighborhoods are the city's Community Reporting Areas. "Surveyed" is the share of intersections
+      Project Sidewalk volunteers have covered; where it's low, the count of missing ramps is likely too low.
+      Select a column to sort.</p>
+    <div class="table-scroll"><table class="hoods" id="hoods"></table></div>
+  </section>
+
+  <section class="wrap" aria-labelledby="organize-h">
+    <h2 id="organize-h">Organize your block</h2>
+    <p class="section-lede">The city does build curb ramps when people ask, and a group with specific, evidence-backed corners is hard to ignore.</p>
+    <ol class="goals">
+      <li><h3>Find a few neighbors</h3>
+        <p>A building group chat, a Buy Nothing group, a PTA, a block party list, Nextdoor. Three to five people is plenty to start.</p></li>
+      <li><h3>Pick one street</h3>
+        <p>One stretch of 10 to 20 blocks is a manageable ask. Choose the hotspot street people actually walk: to a school, a park, a bus stop or a grocery store.</p></li>
+      <li><h3>Get a street page</h3>
+        <p>Use "Organize this one" on a hotspot to ask for a Trebuche page: every corner checked one by one, a map, and copy-ready request text.
+          <a href="../phinney-ridge/">Dayton Ave N</a> shows what you get.</p></li>
+      <li><h3>File, together</h3>
+        <p>Neighbors with a disability (or their caregivers) file SDOT's ADA form, two intersections each. Everyone else signs one letter
+          to SDOT and your <a href="https://www.seattle.gov/council/meet-the-council">council district's member</a>. <a href="../#ask">How to ask →</a></p></li>
+    </ol>
+  </section>
+
+  <section class="wrap" aria-labelledby="method-h">
+    <h2 id="method-h">How this is counted, and what it misses</h2>
+    <ul class="prose">
+      <li><strong>No ramp</strong> means SDOT's curb ramp inventory has no built ramp at the intersection, and either SDOT recorded "no ramp"
+        or Project Sidewalk volunteers labeled a missing ramp there and labeled no ramps.</li>
+      <li><strong>Only intersections with a sidewalk</strong> are counted (from SDOT's sidewalk inventory). Much of north Seattle and
+        parts of the south end have no sidewalks at all; that's a bigger problem than ramps, and it doesn't show here.</li>
+      <li><strong>Unknown</strong> means no record either way: SDOT has nothing, and volunteers haven't labeled it. Low survey coverage,
+        as in parts of Southeast and West Seattle, makes an area look better than it is.</li>
+      <li><strong>Imagery ages.</strong> Project Sidewalk's photos are mostly from 2018 to 2022, so some of these corners have been fixed since.
+        Street pages check every corner against OpenStreetMap too, and flag where sources disagree.</li>
+      <li>Counted per intersection, not per corner. A partly ramped intersection counts as having ramps.</li>
+    </ul>
+    <p class="small" id="refreshed"></p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-brand"><img src="../../logo.svg" width="40" height="40" alt=""><span>Trebuche · Seattle hotspots</span></div>
+    <p class="small">Not affiliated with the City of Seattle. Data: SDOT curb ramp, sidewalk and intersection inventories, City of Seattle
+      Community Reporting Areas, <a href="https://sidewalk-sea.cs.washington.edu/">Project Sidewalk</a> (University of Washington),
+      © OpenStreetMap contributors. Built by <code>scripts/hotspots.rb</code>.</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="hotspots.js"></script>
+</body>
+</html>

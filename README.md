@@ -1,26 +1,55 @@
 # trebuche
 
 Finding missing curb ramps, corner by corner, and helping neighbors ask the city to build
-them. The first street is **Dayton Ave N, Seattle (N 60th – N 85th St, Phinney Ridge)**.
+them. Streets so far, all in Seattle: **Dayton Ave N** (Phinney Ridge, where it started),
+**2nd Ave NW** (Fremont), **9th Ave NW** (Whittier Heights), **30th Ave NW** (Loyal Heights)
+and **Latona Ave NE** (Green Lake), plus a citywide **hotspot map** of where missing ramps cluster.
 
 **Website:** <https://olivierlacan.github.io/trebuche/> (see [Publishing](#publishing)).
 
 ```
-ruby scripts/fetch.rb    # download all sources into data/raw/  (~1 min)
-ruby scripts/build.rb    # write output/, docs/areas.js and docs/seattle/phinney-ridge/data.js
-open docs/index.html     # every page also works straight from disk
+ruby scripts/fetch.rb      # download every street's sources into data/raw/<area>/  (a few min)
+ruby scripts/build.rb      # write output/<area>/, each street's pages and data, docs/areas.js
+ruby scripts/hotspots.rb   # citywide scan -> docs/seattle/hotspots/data.js
+open docs/index.html       # every page also works straight from disk
 ```
 
 Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`,
-`osm`) refreshes a single source.
+`osm`) refreshes a single source; `ruby scripts/fetch.rb fremont` (or `build.rb fremont`)
+a single street.
+
+## Streets
+
+Each street is one entry in `data/areas.json`: its neighborhood and URL slug, the OSM
+names of the street and its numbered cross streets (`"cross_prefix": "Northwest"`), the
+range of cross streets, a corner ID prefix (`dayton` makes `dayton-61-NE`), the download
+box and a narrow OSM corridor. `build.rb` renders each street's `index.html` and
+`map.html` from `templates/area/*.erb`, so edit the templates, not the generated pages.
+The pipeline handles north–south streets crossed by numbered streets, including jogs in
+the main street (`64W`/`64E`) and side streets that don't line up across it (`82S`/`82N`,
+two T-intersections).
+
+## Hotspots
+
+`scripts/hotspots.rb` checks every SDOT intersection in Seattle (about 13,000) against
+SDOT's curb ramp inventory, SDOT's sidewalk inventory and Project Sidewalk's
+per-intersection scores. An intersection counts as **no ramp** when SDOT has no built ramp
+there and either SDOT recorded "no ramp" or volunteers labeled a missing ramp and no ramps.
+Only intersections with an improved sidewalk count (`SURFTYPE` other than `UIMPRV`), so
+places without sidewalks at all don't show up as ramp hotspots. Intersections are grouped
+into ~450 m cells; cells with 6 or more no-ramp intersections are hot, and side-by-side hot
+cells merge into a hotspot named after the city's Community Reporting Areas and council
+districts. `docs/seattle/hotspots/` shows the map, the ranked hotspots (`?spot=3` links to
+one), and a table by neighborhood with survey coverage. Downloads are cached in
+`data/raw/citywide/`; `--refresh` downloads again (the daily build does).
 
 ## Outputs
 
 | File | What |
 |---|---|
-| `docs/` | The website (see below). Generated: `areas.js`, `seattle/phinney-ridge/data.js` and `corners.csv`, plus `og.png` images rendered by hand |
-| `output/corners.csv` | One row per corner: overall status, which crossings lack a ramp, per-source verdicts, city install date, SDOT work orders, evidence IDs |
-| `output/corners.geojson` | Same rows as points |
+| `docs/` | The website (see below). Generated: `areas.js`, each street's `index.html`, `map.html`, `data.js` and `corners.csv`, `seattle/hotspots/data.js`; `og.png` images rendered by hand |
+| `output/<area>/corners.csv` | One row per corner: overall status, which crossings lack a ramp, per-source verdicts, city install date, SDOT work orders, evidence IDs (not committed; the same CSV is published with each street's pages) |
+| `output/<area>/corners.geojson` | Same rows as points |
 
 ## The website
 
@@ -28,8 +57,9 @@ Ruby 3.3+, standard library only, no gems. `ruby scripts/fetch.rb city` (or `ps`
 |---|---|---|
 | Home | `docs/index.html` | The project, not tied to a place: what it does, how it works, how sure "missing" is, how to start a street, and a card per street |
 | Seattle | `docs/seattle/index.html` | How to ask Seattle for a ramp, what Seattle's data gets wrong, other Seattle tools, and Seattle's streets |
-| Phinney Ridge | `docs/seattle/phinney-ridge/index.html` | Dayton Ave N: live counts, the corner strip, goals, how to help |
-| Map | `docs/seattle/phinney-ridge/map.html` | The Dayton Ave N map (below) |
+| Hotspots | `docs/seattle/hotspots/index.html` | Citywide map and ranking of where missing ramps cluster, and how to organize |
+| A street | `docs/seattle/<neighborhood>/index.html` | e.g. Phinney Ridge for Dayton Ave N: live counts, the corner strip, goals, how to help |
+| Its map | `docs/seattle/<neighborhood>/map.html` | The street's map (below) |
 
 Shared files live at the top of `docs/`: `logo.svg`, `site.css` (text pages), `style.css`
 and `app.js` (map), `area.js` (a street's landing page), `area-cards.js` (street cards,

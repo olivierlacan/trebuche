@@ -1,0 +1,52 @@
+[
+  {
+    "city": "Seattle", "city_slug": "seattle",
+    "name": "Phinney Ridge", "slug": "phinney-ridge",
+    "street": "Dayton Ave N", "short": "Dayton", "osm_name": "Dayton Avenue North",
+    "cross_prefix": "North", "cross_abbr": "N", "first": 60, "last": 85,
+    "id_prefix": "dayton",
+    "bbox": [47.668, -122.362, 47.693, -122.348],
+    "osm_lon": [-122.3550, -122.3505],
+    "note": "Started by neighbors on Phinney Ridge."
+  },
+  {
+    "city": "Seattle", "city_slug": "seattle",
+    "name": "Fremont", "slug": "fremont",
+    "street": "2nd Ave NW", "short": "2nd Ave NW", "osm_name": "2nd Avenue Northwest",
+    "cross_prefix": "Northwest", "cross_abbr": "NW", "first": 40, "last": 54,
+    "id_prefix": "2nd-nw",
+    "bbox": [47.6535, -122.366, 47.6705, -122.352],
+    "osm_lon": [-122.3612, -122.3560],
+    "note": "Found by Trebuche's citywide scan: SDOT records no built ramp at any intersection from NW 40th to NW 54th St."
+  },
+  {
+    "city": "Seattle", "city_slug": "seattle",
+    "name": "Whittier Heights", "slug": "whittier-heights",
+    "street": "9th Ave NW", "short": "9th Ave NW", "osm_name": "9th Avenue Northwest",
+    "cross_prefix": "Northwest", "cross_abbr": "NW", "first": 60, "last": 80,
+    "id_prefix": "9th-nw",
+    "bbox": [47.670, -122.376, 47.689, -122.361],
+    "osm_lon": [-122.3710, -122.3660],
+    "note": "Found by Trebuche's citywide scan: long runs of intersections with no built ramp in SDOT's records, and Project Sidewalk labels of missing ramps at nearly all of them."
+  },
+  {
+    "city": "Seattle", "city_slug": "seattle",
+    "name": "Loyal Heights", "slug": "loyal-heights",
+    "street": "30th Ave NW", "short": "30th Ave NW", "osm_name": "30th Avenue Northwest",
+    "cross_prefix": "Northwest", "cross_abbr": "NW", "first": 59, "last": 83,
+    "id_prefix": "30th-nw",
+    "bbox": [47.669, -122.403, 47.691, -122.388],
+    "osm_lon": [-122.3982, -122.3932],
+    "note": "Found by Trebuche's citywide scan: most intersections from NW 59th to NW 83rd St have no built ramp in SDOT's records."
+  },
+  {
+    "city": "Seattle", "city_slug": "seattle",
+    "name": "Green Lake", "slug": "green-lake",
+    "street": "Latona Ave NE", "short": "Latona", "osm_name": "Latona Avenue Northeast",
+    "cross_prefix": "Northeast", "cross_abbr": "NE", "first": 75, "last": 91,
+    "id_prefix": "latona",
+    "bbox": [47.681, -122.333, 47.697, -122.318],
+    "osm_lon": [-122.3282, -122.3230],
+    "note": "Found by Trebuche's citywide scan: SDOT records no built ramp at any intersection north of NE 75th St except one corner of NE 82nd."
+  }
+]

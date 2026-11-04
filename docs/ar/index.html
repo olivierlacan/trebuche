@@ -148,6 +148,7 @@
   </div>
 </footer>
 
+<script src="../areas.js"></script>
 <script>
   const PDF = "https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf";
   const TYPES = {
@@ -185,15 +186,18 @@
 
   // Coming from a corner on the map: name it and link back.
   const id = params.get("corner");
-  const m = id && /^(\d+)([WE]?)-(NE|NW|SE|SW)$/.exec(id);
+  const slug = params.get("area") || "phinney-ridge"; // links from before there were several streets
+  const area = (window.AREAS || []).find(a => a.slug === slug);
+  const m = area && id && /^(\d+)([WENS]?)-(NE|NW|SE|SW)$/.exec(id);
   if (m) {
     const n = +m[1], suf = n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
     const words = { NE: "northeast", NW: "northwest", SE: "southeast", SW: "southwest" }[m[3]];
-    const jog = m[2] ? ` (${m[2] === "W" ? "west" : "east"} half of the jog)` : "";
-    subject = `the ${words} corner of Dayton Ave N & N ${n}${suf} St${jog}`;
+    const jog = /[WE]/.test(m[2]) ? ` (${m[2] === "W" ? "west" : "east"} half of the jog)` : "";
+    const abbr = area.extent.split(" ")[0];
+    subject = `the ${words} corner of ${area.street} & ${abbr} ${n}${suf} St${jog}`;
     const back = document.getElementById("back");
     back.hidden = false;
-    back.innerHTML = `<a class="btn" href="../seattle/phinney-ridge/map.html?corner=${encodeURIComponent(id)}">Back to this corner on the map</a>`;
+    back.innerHTML = `<a class="btn" href="../${area.path}map.html?corner=${encodeURIComponent(id)}">Back to this corner on the map</a>`;
   }
 
   function show(key, push) {

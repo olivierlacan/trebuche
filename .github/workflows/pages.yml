@@ -28,6 +28,8 @@ jobs:
         run: ruby scripts/fetch.rb
       - name: Build corners and site data
         run: ruby scripts/build.rb
+      - name: Citywide hotspot scan
+        run: ruby scripts/hotspots.rb --refresh
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Download curb ramp data for the Dayton Ave N study area into data/raw/.
+# Download curb ramp data for every street in data/areas.json into
+# data/raw/<area slug>/.
 #
 # Sources:
 #   1. SDOT "Curb Ramps (Active)" and "Curb Ramp Work Orders" ArcGIS feature
@@ -10,24 +11,29 @@
 #   3. OpenStreetMap (Overpass API, falling back to the OSM editing API in tiles)
 #
 # Standard library only. Run from the repo root:
-#   ruby scripts/fetch.rb            # everything
-#   ruby scripts/fetch.rb city osm   # just some sources
+#   ruby scripts/fetch.rb                    # every area, every source
+#   ruby scripts/fetch.rb city osm           # just some sources
+#   ruby scripts/fetch.rb fremont            # just one area (by slug)
 
+require "fileutils"
 require "json"
 require "net/http"
 require "time"
 require "uri"
 
 ROOT = File.expand_path("..", __dir__)
-RAW = File.join(ROOT, "data", "raw")
+RAW_ROOT = File.join(ROOT, "data", "raw")
+AREAS = JSON.parse(File.read(File.join(ROOT, "data", "areas.json")))
 
-# Study area: Dayton Ave N, N 60th St to N 85th St, padded a little so corner
-# points just outside the nominal box are still captured.
-SOUTH, WEST, NORTH, EAST = 47.668, -122.362, 47.693, -122.348
-
-# Narrow corridor around Dayton Ave N (lon ~ -122.3527) for OSM, which is dense
-# with building nodes and would exceed the OSM API's 50k-node limit otherwise.
-OSM_WEST, OSM_EAST = -122.3550, -122.3505
+# Set per area by use_area: the study box (padded a little so corner points
+# just outside the nominal street range are still captured), and a narrow
+# corridor around the street for OSM, which is dense with building nodes and
+# would exceed the OSM API's 50k-node limit otherwise.
+def use_area(a)
+  $raw = File.join(RAW_ROOT, a["slug"])
+  $south, $west, $north, $east = a["bbox"]
+  $osm_west, $osm_east = a["osm_lon"]
+end
 
 ARCGIS = "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services"
 CITY_URL = "#{ARCGIS}/Curb_Ramps_(Active)/FeatureServer/0/query"
@@ -55,7 +61,7 @@ def http(url, params: nil, form: nil, timeout: 120)
 end
 
 def save(name, obj, source_url)
-  path = File.join(RAW, name)
+  path = File.join($raw, name)
   meta = { "_fetched" => Time.now.utc.iso8601, "_source" => source_url }
   File.write(path, JSON.generate(meta.merge(obj)))
   puts "  wrote #{path.delete_prefix("#{ROOT}/")}"
@@ -63,7 +69,7 @@ end
 
 def arcgis_params(out_fields)
   {
-    geometry: [WEST, SOUTH, EAST, NORTH].join(","),
+    geometry: [$west, $south, $east, $north].join(","),
     geometryType: "esriGeometryEnvelope",
     inSR: 4326, outSR: 4326,
     spatialRel: "esriSpatialRelIntersects",
@@ -96,14 +102,14 @@ end
 
 def fetch_project_sidewalk
   puts "Project Sidewalk labels ..."
-  d = http(PS_URL, params: { bbox: [WEST, SOUTH, EAST, NORTH].join(",") }, timeout: 300)
+  d = http(PS_URL, params: { bbox: [$west, $south, $east, $north].join(",") }, timeout: 300)
   puts "  #{d["features"].size} labels"
   save("project_sidewalk_labels.geojson", d, PS_URL)
 end
 
 def fetch_osm
   puts "OpenStreetMap ..."
-  bbox = [SOUTH, OSM_WEST, NORTH, OSM_EAST].join(",")
+  bbox = [$south, $osm_west, $north, $osm_east].join(",")
   query = <<~Q
     [out:json][timeout:90];
     (
@@ -126,10 +132,10 @@ def fetch_osm
   # clipped at tile edges, which is fine for corner-scale analysis.
   puts "  falling back to OSM API tiles"
   elements = {}
-  lat = SOUTH
-  while lat < NORTH
-    top = [lat + 0.005, NORTH].min
-    d = http(OSM_API_URL, params: { bbox: [OSM_WEST, lat, OSM_EAST, top].join(",") }, timeout: 180)
+  lat = $south
+  while lat < $north
+    top = [lat + 0.005, $north].min
+    d = http(OSM_API_URL, params: { bbox: [$osm_west, lat, $osm_east, top].join(",") }, timeout: 180)
     d["elements"].each { elements[[_1["type"], _1["id"]]] = _1 }
     puts format("    tile %.3f-%.3f: %d elements", lat, top, d["elements"].size)
     lat = top
@@ -139,12 +145,19 @@ def fetch_osm
 end
 
 if $PROGRAM_NAME == __FILE__
-  Dir.mkdir(RAW) unless Dir.exist?(RAW)
-  which = ARGV.empty? ? %w[city ps osm] : ARGV
-  if which.include?("city")
-    fetch_city
-    fetch_city_work_orders
+  sources, slugs = ARGV.partition { %w[city ps osm].include?(_1) }
+  sources = %w[city ps osm] if sources.empty?
+  areas = slugs.empty? ? AREAS : AREAS.select { slugs.include?(_1["slug"]) }
+  abort "No area named #{slugs.join(", ")} in data/areas.json" if areas.empty?
+  areas.each do |a|
+    puts "== #{a["street"]} (#{a["name"]})"
+    use_area(a)
+    FileUtils.mkdir_p($raw)
+    if sources.include?("city")
+      fetch_city
+      fetch_city_work_orders
+    end
+    fetch_project_sidewalk if sources.include?("ps")
+    fetch_osm if sources.include?("osm")
   end
-  fetch_project_sidewalk if which.include?("ps")
-  fetch_osm if which.include?("osm")
 end
