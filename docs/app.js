@@ -395,6 +395,7 @@ function renderCorner() {
       <a class="button" href="${CSB_PORTAL}" target="_blank" rel="noopener">General request</a>
       <a class="button" href="${issueUrl([c])}" target="_blank" rel="noopener">I filed this</a>
     </div>
+    ${needsWork(c) ? `<p class="small">On site? <a href="../../ar/?corner=${encodeURIComponent(shortId(c.corner_id))}">See a standard ramp at this corner in AR</a>, to check what's in the way.</p>` : ""}
     <p class="small">Not sure which form? See <button class="link" data-goto="request">How to request</button>.</p>
 
     <h2>What each source says</h2>

@@ -153,6 +153,26 @@ used to render `docs/apple-touch-icon.png` (phones apply their own mask). The li
 preview images (`docs/og.png`, `docs/seattle/phinney-ridge/og.png`) are rendered from
 `logo.svg`. The previous street-level logo is kept as `docs/logo-street.svg`.
 
+## Curb ramp in AR
+
+`docs/ar/` shows a true-scale City of Seattle Type 422A curb ramp that neighbors can place
+at a corner with their phone, as a rough check of what fits (poles, hydrants, drains,
+planting strips). It uses Google's open-source
+[`<model-viewer>`](https://modelviewer.dev/): Chrome's AR on Android, AR Quick Look on
+iPhone and iPad, and a 3D view everywhere else. Scale is locked to true size.
+
+`ruby scripts/ramp_model.rb` writes the model, `docs/ar/ramp-422a.glb` (binary glTF, in
+meters, standard library only). It's sized for Seattle's 6 in curb: a 5 ft ramp rising
+over a 6 ft run (8.3%), 5 ft wings at 10%, a 4 ft landing, a 2 ft yellow warning panel
+with truncated domes at their real size and spacing, through joints, short curb stubs,
+and the 4 × 4 ft clear area dashed on the street. `--check` prints the dimensions
+measured from the mesh. The file passes the Khronos glTF validator with no issues.
+
+Corners that need a ramp link to it from the map (`ar/?corner=61-NE` names the corner and
+links back). The page tells people to stay on the sidewalk, and says plainly that it's a
+visual aid: phone AR drifts a few percent and assumes flat ground, and SDOT engineers
+choose the actual design.
+
 ## Publishing
 
 `.github/workflows/pages.yml` refetches every source, rebuilds, and deploys `docs/` to

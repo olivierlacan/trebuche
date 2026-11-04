@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Curb Ramp in AR</title>
+<meta name="description" content="Place a true-scale City of Seattle Type 422A curb ramp at a street corner with your phone's camera, as a rough check of what fits.">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a24">
+<meta property="og:type" content="website">
+<meta property="og:title" content="See a standard curb ramp at your corner">
+<meta property="og:description" content="A true-scale City of Seattle Type 422A curb ramp you can place at a street corner in augmented reality.">
+<meta property="og:image" content="https://olivierlacan.github.io/trebuche/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="../site.css">
+<style>
+  .viewer-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  /* Sky above, asphalt-gray below, so the white clear-area dashes read in the 3D view */
+  model-viewer { width: 100%; height: min(62vh, 520px); background: linear-gradient(#dfe7ee 0%, #eef0ee 45%, #6d7573 72%, #4d5554 100%); --poster-color: transparent; }
+  .ar-button {
+    position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+    background: #f4c542; color: #1d1d1f; border: 0; border-radius: 999px; padding: 12px 20px;
+    font: 600 16px/1 system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.25); cursor: pointer;
+  }
+  .ar-unavailable { position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(255,255,255,.92);
+    border-radius: 10px; padding: 8px 12px; font-size: 14px; color: #333; text-align: center; }
+  model-viewer[ar-status="session-started"] .ar-unavailable { display: none; }
+  .safety { background: #fff4d1; color: #4a3b00; border: 1px solid #f0d37a; border-radius: 12px; padding: 12px 14px; margin: 16px 0; }
+  @media (prefers-color-scheme: dark) { .safety { background: #3a3110; color: #f7e6b0; border-color: #6b5a1f; } }
+  /* On this page the viewer matters most: keep the header short, especially on phones */
+  .hero.compact { padding: 36px 0 28px; }
+  .hero.compact h1 { font-size: clamp(28px, 5vw, 44px); }
+  .hero.compact .lede { margin-bottom: 16px; }
+  @media (max-width: 600px) {
+    .hero.compact { padding: 20px 0 18px; }
+    .hero.compact .hero-logo { width: 44px; height: 44px; margin-bottom: 10px; }
+    .hero.compact .lede { font-size: 16px; }
+  }
+  main > section.wrap:first-child { margin-top: 20px; }
+  .dims { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 0; list-style: none; }
+  .dims li { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .dims strong { display: block; font-size: 20px; }
+  .dims span { color: var(--muted); font-size: 14px; }
+</style>
+<script type="module" src="https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js"></script>
+</head>
+<body>
+
+<header class="hero compact">
+  <div class="wrap">
+    <a href="../" aria-label="Trebuche home"><img class="hero-logo" src="../logo.svg" width="76" height="76" alt=""></a>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../">Trebuche</a><span aria-hidden="true">›</span><a href="../seattle/">Seattle</a><span aria-hidden="true">›</span><span aria-current="page">Curb ramp in AR</span></nav>
+    <h1>See a standard curb ramp at your corner</h1>
+    <p class="lede" id="lede">A true-scale City of Seattle Type 422A curb ramp you can place on the street with your
+      phone's camera, to check roughly what would fit: is there room, and what's in the way?</p>
+    <div class="ctas" id="back" hidden></div>
+  </div>
+</header>
+
+<main>
+  <section class="wrap" aria-labelledby="viewer-h">
+    <h2 id="viewer-h" class="visually-hidden" style="position:absolute;left:-9999px">3D model</h2>
+    <div class="viewer-wrap">
+      <model-viewer id="ramp" src="ramp-422a.glb"
+        alt="A 3D model of a City of Seattle Type 422A curb ramp: a sloped ramp with triangular wings, a yellow warning panel with raised domes at the street, a landing at the top, and the clear area outlined on the street."
+        ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+        camera-controls touch-action="pan-y" shadow-intensity="0.7" exposure="1.05"
+        camera-orbit="25deg 62deg auto" min-camera-orbit="auto 5deg 2m" max-camera-orbit="auto 88deg 14m"
+        interaction-prompt="auto">
+        <button slot="ar-button" class="ar-button">View at true scale in AR</button>
+        <div class="ar-unavailable" id="no-ar" hidden>AR isn't available on this device. You can still rotate and zoom the 3D model.</div>
+      </model-viewer>
+    </div>
+
+    <div class="safety" role="note"><strong>Stay on the sidewalk.</strong> Place the ramp by pointing your phone at
+      the street from the curb. Never step into the street or traffic to use this.</div>
+
+    <h2>How to use it</h2>
+    <ol class="steps">
+      <li><strong>Open AR.</strong> Tap "View at true scale in AR" on a phone. Android uses Chrome's AR, iPhone and iPad use AR Quick Look.</li>
+      <li><strong>Let it find the street.</strong> Slowly move the phone so it can detect the pavement.</li>
+      <li><strong>Place it at the curb.</strong> The model sits on the street surface. Aim at the street right in front
+        of the curb, where a ramp would meet the street, and tap to place.</li>
+      <li><strong>Line it up.</strong> Turn it with two fingers until the yellow panel faces the street and the model's
+        curb lines up with the real one. The size is locked to true scale.</li>
+      <li><strong>Look around.</strong> Poles, hydrants and signs need 1 ft of clearance from the ramp and landing;
+        drains and utility covers can't sit in them. Take a screenshot to attach to your request.</li>
+    </ol>
+  </section>
+
+  <section class="wrap" aria-labelledby="dims-h">
+    <h2 id="dims-h">What you're looking at</h2>
+    <p class="section-lede">A perpendicular ramp built to Seattle's
+      <a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=209">Standard Plan 422a</a>
+      and <a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=218">422k</a>
+      (2026 edition), for Seattle's standard 6 inch curb.</p>
+    <ul class="dims">
+      <li><strong>5 ft wide</strong><span>ramp (4 ft is the minimum)</span></li>
+      <li><strong>6 ft long</strong><span>rising 6 in at 8.3%, the steepest allowed</span></li>
+      <li><strong>5 ft wings</strong><span>on each side along the curb, at 10%</span></li>
+      <li><strong>4 ft landing</strong><span>level, at the top, as wide as the ramp</span></li>
+      <li><strong>2 ft yellow panel</strong><span>truncated domes, about 2⅓ in apart, across the full width</span></li>
+      <li><strong>4 × 4 ft clear area</strong><span>dashed on the street, which must fall inside the crosswalk</span></li>
+    </ul>
+    <h2>Limits</h2>
+    <ul>
+      <li>This is a rough visual aid, not a design. SDOT engineers pick the ramp type and fit it to each corner.</li>
+      <li>Phone AR is usually accurate to within a few percent, but it can drift, and it assumes flat ground.
+        Real streets and sidewalks slope, so the model may float or sink a little.</li>
+      <li>Corners where the ramp crosses a grass planting strip are often built with side curbs instead of wings,
+        and corners usually get two ramps, one per crossing.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-brand"><img src="../logo.svg" width="40" height="40" alt=""><span>Trebuche</span></div>
+    <p class="small">3D viewer: <a href="https://modelviewer.dev/">model-viewer</a> (Google, open source). Model drawn
+      from the City of Seattle Standard Plans by <code>scripts/ramp_model.rb</code>.</p>
+  </div>
+</footer>
+
+<script>
+  // Coming from a corner on the map: name it and link back.
+  const id = new URLSearchParams(location.search).get("corner");
+  const m = id && /^(\d+)([WE]?)-(NE|NW|SE|SW)$/.exec(id);
+  if (m) {
+    const n = +m[1], suf = n % 100 >= 11 && n % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th");
+    const words = { NE: "northeast", NW: "northwest", SE: "southeast", SW: "southwest" }[m[3]];
+    const jog = m[2] ? ` (${m[2] === "W" ? "west" : "east"} half of the jog)` : "";
+    const name = `the ${words} corner of Dayton Ave N & N ${n}${suf} St${jog}`;
+    document.getElementById("lede").textContent =
+      `A true-scale City of Seattle Type 422A curb ramp to place at ${name}, to check roughly what would fit.`;
+    const back = document.getElementById("back");
+    back.hidden = false;
+    back.innerHTML = `<a class="btn" href="../seattle/phinney-ridge/map.html?corner=${encodeURIComponent(id)}">Back to this corner on the map</a>`;
+  }
+  const mv = document.getElementById("ramp");
+  mv.addEventListener("load", () => { if (!mv.canActivateAR) document.getElementById("no-ar").hidden = false; });
+</script>
+</body>
+</html>
