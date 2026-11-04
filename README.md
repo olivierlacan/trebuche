@@ -56,10 +56,13 @@ one), and a table by neighborhood with survey coverage. Downloads are cached in
 | Page | File | What |
 |---|---|---|
 | Home | `docs/index.html` | The project, not tied to a place: what it does, how it works, how sure "missing" is, how to start a street, and a card per street |
+| Why ramps matter | `docs/why/index.html` | Why curb ramps matter and who uses them, with to-scale drawings: a wheelchair at a bare curb vs. a ramp, common wheel sizes against a 6 in curb, Seattle's armored curbs (with the 1919 Standard Plans' "Curb Armor" and "Concrete Curbing" drawings, `docs/why/1919-*.png`, cropped from the city's scan), the detour when only one side of a crossing has a ramp, and podcasts, video and books to go further. Hand-written, with inline SVG |
 | Seattle | `docs/seattle/index.html` | How to ask Seattle for a ramp, what Seattle's data gets wrong, other Seattle tools, and Seattle's streets |
 | Hotspots | `docs/seattle/hotspots/index.html` | Citywide map and ranking of where missing ramps cluster, and how to organize |
 | A street | `docs/seattle/<neighborhood>/index.html` | e.g. Phinney Ridge for Dayton Ave N: live counts, the corner strip, goals, how to help |
 | Its map | `docs/seattle/<neighborhood>/map.html` | The street's map (below) |
+
+Screenshots of pages, used in pull requests, live in `screenshots/` (outside `docs/`, so they aren't deployed). Keep them about 1200 px wide.
 
 Shared files live at the top of `docs/`: `logo.svg`, `site.css` (text pages), `style.css`
 and `app.js` (map), `area.js` (a street's landing page), `area-cards.js` (street cards,
@@ -98,10 +101,15 @@ points (SDOT ramp records and OSM kerb nodes) for that corner, so they land on t
 
 ### Links you can share
 
+Start from what the hotspot map shows, not from any one corner: `seattle/hotspots/?spot=1`
+opens Seattle's largest cluster of missing ramps (Fremont / Greenwood / Phinney Ridge),
+and Dayton Ave N runs through it. The examples below stay inside that hotspot: at Dayton
+& N 61st St, all four corners are confirmed missing.
+
 | Parameter | Example | Effect |
 |---|---|---|
 | `corner` | `seattle/phinney-ridge/map.html?corner=61-NE` | Opens that corner and zooms to it |
-| `lat`, `lng`, `z` | `?lat=47.66683&lng=-122.35565&z=21` | Map center and zoom (1–21) |
+| `lat`, `lng`, `z` | `?lat=47.66683&lng=-122.35565&z=16` | Map center and zoom (1–21); this one is the hotspot's center |
 | `sel` | `?sel=79-NE,79-NW,64W-SW` | Corners in the group request |
 | `tab` | `?tab=group` | Which panel is open: `key`, `corner`, `request`, `group`, `list` |
 
