@@ -101,10 +101,15 @@ points (SDOT ramp records and OSM kerb nodes) for that corner, so they land on t
 
 ### Links you can share
 
+Start from what the hotspot map shows, not from any one corner: `seattle/hotspots/?spot=1`
+opens Seattle's largest cluster of missing ramps (Fremont / Greenwood / Phinney Ridge),
+and Dayton Ave N runs through it. The examples below stay inside that hotspot: at Dayton
+& N 61st St, all four corners are confirmed missing.
+
 | Parameter | Example | Effect |
 |---|---|---|
 | `corner` | `seattle/phinney-ridge/map.html?corner=61-NE` | Opens that corner and zooms to it |
-| `lat`, `lng`, `z` | `?lat=47.66683&lng=-122.35565&z=21` | Map center and zoom (1–21) |
+| `lat`, `lng`, `z` | `?lat=47.66683&lng=-122.35565&z=16` | Map center and zoom (1–21); this one is the hotspot's center |
 | `sel` | `?sel=79-NE,79-NW,64W-SW` | Corners in the group request |
 | `tab` | `?tab=group` | Which panel is open: `key`, `corner`, `request`, `group`, `list` |
 
