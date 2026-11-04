@@ -42,18 +42,23 @@ const maxCell = Math.max(...cells.values());
 // One color scale for everything on this page: squares, hotspot markers, cards and the legend.
 // pale yellow -> orange -> deep red, by no-ramp intersections in a square.
 const STOPS = [[255, 230, 140], [240, 140, 40], [150, 20, 30]];
+// Relative luminance and contrast ratio (WCAG 2).
+const lum = c => c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+  .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const WHITE = [255, 255, 255], INK = [29, 29, 31];
+// Numbers on markers are small text, so they need 4.5:1. Mid-reds exist where neither dark nor
+// white text gets there; the scale steps over that band by darkening those reds until white passes.
 const cellRgb = n => {
   const t = Math.min(1, Math.max(0, (n - 1) / (maxCell - 1 || 1)));
   const [a, b, u] = t < 0.5 ? [STOPS[0], STOPS[1], t * 2] : [STOPS[1], STOPS[2], (t - 0.5) * 2];
-  return a.map((v, i) => Math.round(v + (b[i] - v) * u));
+  let c = a.map((v, i) => Math.round(v + (b[i] - v) * u));
+  if (contrast(c, INK) < 4.5) while (contrast(c, WHITE) < 4.5) c = c.map(v => Math.round(v * 0.97));
+  return c;
 };
 const cellColor = n => `rgb(${cellRgb(n).join(",")})`;
-// Dark or white text, whichever reads better on that color.
-const inkOn = n => {
-  const lum = cellRgb(n).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
-    .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
-  return (lum + 0.05) / 0.05 > 1.05 / (lum + 0.05) ? "#1d1d1f" : "#fff";
-};
+// White text once white reaches 4.5:1 on the color; dark text before that.
+const inkOn = n => (contrast(cellRgb(n), WHITE) >= 4.5 ? "#fff" : "#1d1d1f");
 // A hotspot's color is its darkest square, so the marker matches the shading under it.
 const peakOf = s => {
   const [[s0, w0], [n0, e0]] = s.bounds;
