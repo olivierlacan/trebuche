@@ -155,18 +155,29 @@ preview images (`docs/og.png`, `docs/seattle/phinney-ridge/og.png`) are rendered
 
 ## Curb ramp in AR
 
-`docs/ar/` shows a true-scale City of Seattle Type 422A curb ramp that neighbors can place
-at a corner with their phone, as a rough check of what fits (poles, hydrants, drains,
-planting strips). It uses Google's open-source
-[`<model-viewer>`](https://modelviewer.dev/): Chrome's AR on Android, AR Quick Look on
-iPhone and iPad, and a 3D view everywhere else. Scale is locked to true size.
+`docs/ar/` shows true-scale City of Seattle curb ramps that neighbors can place at a corner
+with their phone, as a rough check of what fits (poles, hydrants, drains, planting strips).
+It uses Google's open-source [`<model-viewer>`](https://modelviewer.dev/): Chrome's AR on
+Android, AR Quick Look on iPhone and iPad, and a 3D view everywhere else. Scale is locked
+to true size.
 
-`ruby scripts/ramp_model.rb` writes the model, `docs/ar/ramp-422a.glb` (binary glTF, in
-meters, standard library only). It's sized for Seattle's 6 in curb: a 5 ft ramp rising
-over a 6 ft run (8.3%), 5 ft wings at 10%, a 4 ft landing, a 2 ft yellow warning panel
-with truncated domes at their real size and spacing, through joints, short curb stubs,
-and the 4 × 4 ft clear area dashed on the street. `--check` prints the dimensions
-measured from the mesh. The file passes the Khronos glTF validator with no issues.
+People pick one of three designs from the 2026 Standard Plans, all sized for Seattle's
+6 in curb:
+
+| Design | File | When | Model |
+|---|---|---|---|
+| 422A with wings | `ramp-422a.glb` | Sidewalk reaches the curb | 5 ft ramp rising over a 6 ft run (8.3%), 5 ft wings at 10%, 4 ft landing, 4 × 4 ft clear area |
+| 422A with side curbs | `ramp-422a-side-curbs.glb` | Ramp crosses a planting strip | Same run between 6 in side curbs and grass, landing on a 6 ft sidewalk, 5 × 4 ft clear area |
+| 422B parallel | `ramp-422b.glb` | Sidewalk too narrow for a ramp and landing | Two 6 ft wide runs along the curb down to a 5 ft landing at street level, 4 ft of level sidewalk past each, 6 in back curb |
+
+Each has a 2 ft yellow warning panel with truncated domes at their real size and spacing
+(422k) and through joints. `?type=422a-side-curbs` (or `422b`) opens a design directly.
+The page also lists Seattle's other designs (422C–422H) and why they aren't in AR: they
+wrap around the curb radius, which differs at every corner.
+
+`ruby scripts/ramp_model.rb` writes the models (binary glTF, in meters, standard library
+only). `--check` prints the dimensions measured from each mesh. The files pass the Khronos
+glTF validator with no issues.
 
 Corners that need a ramp link to it from the map (`ar/?corner=61-NE` names the corner and
 links back). The page tells people to stay on the sidewalk, and says plainly that it's a
