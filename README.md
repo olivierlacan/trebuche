@@ -43,6 +43,25 @@ districts. `docs/seattle/hotspots/` shows the map, the ranked hotspots (`?spot=3
 one), and a table by neighborhood with survey coverage. Downloads are cached in
 `data/raw/citywide/`; `--refresh` downloads again (the daily build does).
 
+## Budget planner
+
+`docs/seattle/budget/` answers "the city has only so much a year for curb ramps: where
+first?" `hotspots.rb` also writes `docs/seattle/budget/data.js`: every ~450 m square with
+a no-ramp intersection, its intersections (with arterial class), its neighborhood's
+disability and over-65 shares, and the average number of ramps SDOT has recorded at
+intersections that have any (the default ramps per intersection). The page orders the
+squares in the browser:
+
+- **Score** per square: its no-ramp intersections, an arterial counting 1.5 (optional),
+  times the neighborhood's disability share over the city's (optional, on by default) and
+  its over-65 share over the city's (optional).
+- **Highest score first, whole squares at a time**, so an area becomes walkable end to end.
+  Cost is intersections × ramps per intersection × cost per ramp (default $25,000, SDOT's
+  2017 planning figure). A square that runs past a year's budget finishes the next year.
+- Shows the yearly count, total cost, years to finish, a map shaded by funding year, the
+  plan year by year, and a CSV with one row per intersection. `?budget=`, `?cost=`,
+  `?rpi=`, `?dis=`, `?art=`, `?old=` keep the settings in the link.
+
 ## Outputs
 
 | File | What |
@@ -59,6 +78,7 @@ one), and a table by neighborhood with survey coverage. Downloads are cached in
 | Why ramps matter | `docs/why/index.html` | Why curb ramps matter and who uses them, with to-scale drawings: a wheelchair at a bare curb vs. a ramp, common wheel sizes against a 6 in curb, Seattle's armored curbs (with the 1919 Standard Plans' "Curb Armor" and "Concrete Curbing" drawings, `docs/why/1919-*.png`, cropped from the city's scan), the detour when only one side of a crossing has a ramp, and podcasts, video and books to go further. Hand-written, with inline SVG |
 | Seattle | `docs/seattle/index.html` | How to ask Seattle for a ramp, what Seattle's data gets wrong, other Seattle tools, and Seattle's streets |
 | Hotspots | `docs/seattle/hotspots/index.html` | Citywide map and ranking of where missing ramps cluster, and how to organize |
+| Budget planner | `docs/seattle/budget/index.html` | A year-by-year plan for a yearly curb ramp budget, worst areas first (`budget.js`, generated `data.js`) |
 | A street | `docs/seattle/<neighborhood>/index.html` | e.g. Phinney Ridge for Dayton Ave N: live counts, the corner strip, goals, how to help |
 | Its map | `docs/seattle/<neighborhood>/map.html` | The street's map (below) |
 

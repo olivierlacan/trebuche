@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seattle Curb Ramp Budget Planner</title>
+<meta name="description" content="Given a yearly budget for curb ramps, which Seattle neighborhoods should get them first: a year-by-year plan that finishes the worst clusters of missing ramps one area at a time.">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../../apple-touch-icon.png">
+<meta name="theme-color" content="#1f2a24">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Where a yearly curb ramp budget should go first">
+<meta property="og:description" content="Set a yearly budget and get a year-by-year plan for Seattle's missing curb ramps, worst areas first.">
+<meta property="og:url" content="https://olivierlacan.github.io/trebuche/seattle/budget/">
+<meta property="og:image" content="https://olivierlacan.github.io/trebuche/seattle/hotspots/og.png">
+<meta property="og:image:alt" content="Map of Seattle with clusters of intersections missing curb ramps">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="../../site.css">
+<style>
+  /* Funding order, one hue: darkest is soonest. Same steps in both themes, since they sit on map tiles. */
+  :root { --y1: #0b3c7a; --y2: #2766b0; --y3: #5b93cf; --y4: #9cc0e6; --y5: #d6e5f5; }
+  .planner { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px; margin: 0 0 18px; }
+  @media (max-width: 760px) { .planner { grid-template-columns: 1fr; } }
+  .planner label.field { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 15px; }
+  .planner .money { display: flex; align-items: center; border: 1px solid var(--muted); border-radius: 8px; background: var(--bg); }
+  .planner .money span { padding: 0 0 0 10px; color: var(--muted); }
+  .planner input[type=number] { font: 600 18px/1.2 system-ui, sans-serif; padding: 9px 10px; border: 0; border-radius: 8px; width: 100%;
+    background: transparent; color: var(--fg); font-variant-numeric: tabular-nums; min-width: 0; }
+  .planner .hint { font-weight: 400; font-size: 13px; color: var(--muted); line-height: 1.35; }
+  .planner fieldset { grid-column: 1 / -1; border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+  .planner legend { font-weight: 600; font-size: 15px; padding: 0; margin-bottom: 6px; }
+  .planner fieldset label { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; min-height: 24px; max-width: 30em; }
+  .planner fieldset input { width: 18px; height: 18px; margin: 3px 0 0; flex: none; }
+  .presets { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
+  .presets button { font: 600 14px/1 system-ui, sans-serif; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--fg); cursor: pointer; min-height: 32px; }
+  .presets button[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  #planmap { height: min(65vh, 560px); border-radius: 14px; border: 1px solid var(--line); background: var(--surface); margin-top: 18px; }
+  .key { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+  .key li { display: flex; align-items: center; gap: 6px; }
+  .key i { display: inline-block; width: 18px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .years { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .year { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .year h3 { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin: 0 0 8px; }
+  .year h3 i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; align-self: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .year h3 .sub { font-weight: 400; font-size: 15px; color: var(--muted); }
+  .year ol { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 2px; }
+  .year li { display: grid; grid-template-columns: 2.6em 1fr auto; gap: 4px 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 15px; }
+  .year li:first-child { border-top: 0; }
+  .year .rk { font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .year .what strong { font-weight: 600; }
+  .year .what .small { display: block; }
+  .year .amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .year button.link { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; min-height: 24px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
+  .tools .btn { background: var(--surface); color: var(--fg); border-color: var(--line); font: 600 15px/1.2 system-ui, sans-serif; cursor: pointer; }
+  .leaflet-popup-content { font: 14px/1.4 system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="hero">
+  <div class="wrap">
+    <a href="../../" aria-label="Trebuche home"><img class="hero-logo" src="../../logo.svg" width="76" height="76" alt=""></a>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="../../">Trebuche</a><span aria-hidden="true">›</span><a href="../">Seattle</a><span aria-hidden="true">›</span><span aria-current="page">Budget planner</span></nav>
+    <h1>Where a yearly curb ramp budget should go first</h1>
+    <p class="lede">The city can't build every missing ramp at once. Set how much it has each year, and this plan spends it on the worst
+      areas first, finishing one area before moving to the next, so whole neighborhoods become walkable instead of a scattered few corners.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#plan-h">Set a budget</a>
+      <a class="btn" href="#why-h">How the order is chosen</a>
+    </div>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <section class="wrap" aria-labelledby="plan-h">
+    <h2 id="plan-h">The budget</h2>
+    <p class="section-lede">Change any number and the plan below updates. The address bar keeps your numbers, so you can share the exact plan.</p>
+    <form class="planner" id="planner" onsubmit="return false">
+      <label class="field">Yearly budget
+        <span class="money"><span aria-hidden="true">$</span><input type="number" id="budget" min="0" step="250000" inputmode="numeric"></span>
+        <span class="hint">Money for ramps where none exist, on top of the ramps the city builds with paving and other projects.</span>
+      </label>
+      <label class="field">Cost per ramp
+        <span class="money"><span aria-hidden="true">$</span><input type="number" id="cost" min="1000" step="1000" inputmode="numeric"></span>
+        <span class="hint">Design, construction and contingency. SDOT's 2017 planning figure was $25,000; costs have risen since.</span>
+      </label>
+      <label class="field">Ramps per intersection
+        <span class="money"><input type="number" id="rpi" min="1" max="12" step="0.1" inputmode="decimal"></span>
+        <span class="hint" id="rpi-hint">How many ramps it takes to finish one intersection.</span>
+      </label>
+      <div class="presets" role="group" aria-label="Budget presets">Try:
+        <button type="button" data-b="1000000">$1 million</button>
+        <button type="button" data-b="3000000">$3 million</button>
+        <button type="button" data-b="5000000">$5 million</button>
+        <button type="button" data-b="10000000">$10 million</button>
+      </div>
+      <fieldset>
+        <legend>Also count as worse</legend>
+        <label><input type="checkbox" id="w-dis" checked> <span>Neighborhoods where more residents have a disability <span class="small">(scaled to the city average)</span></span></label>
+        <label><input type="checkbox" id="w-art" checked> <span>Missing ramps on busier streets <span class="small">(an arterial counts 1.5 times)</span></span></label>
+        <label><input type="checkbox" id="w-old"> Neighborhoods with more residents over 65</label>
+      </fieldset>
+    </form>
+    <div class="stat-grid" id="stats" aria-live="polite"></div>
+  </section>
+
+  <section class="wrap" aria-labelledby="map-h">
+    <h2 id="map-h">The plan on a map</h2>
+    <p class="section-lede">Each square is about four blocks across (450 m). Darker squares get their ramps sooner.</p>
+    <p><a class="small" href="#years-h">Skip the map, to the plan year by year</a></p>
+    <div id="planmap" role="region" aria-label="Map of the funding order for missing curb ramps"></div>
+    <ul class="key" id="key"></ul>
+  </section>
+
+  <section class="wrap" aria-labelledby="years-h">
+    <h2 id="years-h">Year by year</h2>
+    <p class="section-lede" id="years-lede"></p>
+    <ol class="years" id="years"></ol>
+    <div class="tools">
+      <button class="btn" id="more-years" type="button" hidden>Show every year</button>
+      <button class="btn" id="csv" type="button">Download the plan (CSV, one row per intersection)</button>
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="why-h">
+    <h2 id="why-h">How the order is chosen</h2>
+    <ul class="prose">
+      <li><strong>Worst first.</strong> Each square gets a score: how many of its intersections have a sidewalk but no curb ramp,
+        with the extra weights you picked above. The highest score goes first.</li>
+      <li><strong>Finish an area before starting the next.</strong> A trip is only as good as its worst crossing: three new ramps on a block with
+        ten missing still leave a wheelchair user stuck. Building a whole area at once also means one crew, one traffic plan and one
+        neighborhood notice instead of many. When a square's cost runs past the end of a year, it carries over and finishes first the next year.</li>
+      <li><strong>The cost of an intersection</strong> is ramps per intersection times cost per ramp. The default for ramps per intersection
+        is what SDOT has actually built: the average number of ramps it has recorded at intersections that have any.
+        Four-way intersections usually need more, T-intersections fewer.</li>
+      <li><strong>Neighborhood numbers</strong> (disability, age) come from the city's Community Reporting Areas, so every square in a neighborhood shares them.</li>
+    </ul>
+  </section>
+
+  <section class="wrap" aria-labelledby="miss-h">
+    <h2 id="miss-h">What this leaves out</h2>
+    <ul class="prose">
+      <li><strong>It's not the city's whole ramp program.</strong> Under a 2017 settlement, Seattle builds or upgrades 1,250 ramps a year, most of them
+        as part of paving and other projects, wherever those happen to be. This plan is for money the city can point at specific places.</li>
+      <li><strong>Only ramps known to be missing.</strong> It counts the
+        <a href="../hotspots/#method-h">hotspot map's</a> "no ramp" intersections. Where volunteers haven't surveyed, ramps are missing that this doesn't know about,
+        and some corners on the list have been fixed since the photos were taken.</li>
+      <li><strong>Not per corner.</strong> An intersection with one ramp counts as having ramps. The street pages go corner by corner.</li>
+      <li><strong>No sidewalk, no ramp.</strong> Places without a sidewalk at all aren't counted; that's a bigger and more expensive problem.</li>
+      <li><strong>It doesn't know about destinations.</strong> SDOT also weighs bus stops, schools, clinics and government buildings, and requests from
+        people with disabilities. Use this to argue for <em>where</em>, then check the list against what people walk to.</li>
+    </ul>
+    <p class="small" id="refreshed"></p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="foot-brand"><img src="../../logo.svg" width="40" height="40" alt=""><span>Trebuche · Seattle budget planner</span></div>
+    <p class="small">Not affiliated with the City of Seattle. Data: SDOT curb ramp, sidewalk and intersection inventories, City of Seattle
+      Community Reporting Areas, <a href="https://sidewalk-sea.cs.washington.edu/">Project Sidewalk</a> (University of Washington),
+      © OpenStreetMap contributors. Cost figure: SDOT's
+      <a href="https://seattle.gov/documents/departments/neighborhoods/participatorybudgeting/sdot-average-project-costs.pdf">average project costs</a> (2017).
+      Built by <code>scripts/hotspots.rb</code>.</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="budget.js"></script>
+</body>
+</html>

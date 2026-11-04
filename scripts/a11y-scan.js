@@ -12,7 +12,7 @@ const { chromium } = require('playwright');
 const axe = require('fs').readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const BASE = process.env.BASE || 'http://localhost:8765/';
 const PAGES = [
-  '', 'seattle/', 'seattle/curb-ramps/', 'seattle/hotspots/', 'seattle/hotspots/?spot=3', 'ar/', 'ar/?area=green-lake&corner=82S-NE',
+  '', 'seattle/', 'seattle/curb-ramps/', 'seattle/hotspots/', 'seattle/hotspots/?spot=3', 'seattle/budget/', 'ar/', 'ar/?area=green-lake&corner=82S-NE',
   ...['phinney-ridge', 'fremont', 'whittier-heights', 'loyal-heights', 'green-lake'].flatMap(s => [`seattle/${s}/`, `seattle/${s}/map.html`]),
   'seattle/phinney-ridge/map.html?corner=79-NE', 'seattle/phinney-ridge/map.html?tab=request',
   'seattle/phinney-ridge/map.html?tab=group&sel=79-NE,79-NW,64W-SW', 'seattle/phinney-ridge/map.html?tab=list',
