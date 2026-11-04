@@ -176,7 +176,7 @@ def add_warning(mesh, length, depth, at)
   grid = (0..nu).map do |i|
     (0..2).map do |j|
       u, v = length * i / nu, depth * j / 2
-      add(at.(u, v), mul(surface_frame(at, u, v)[2], LIFT))
+      add(at.(u, v), mul(surface_frame(at, u, v)[2], LIFT * 1.6))
     end
   end
   nu.times do |i|
@@ -190,7 +190,7 @@ def add_warning(mesh, length, depth, at)
       u, v = u0 + c * DOME_SPACING, v0 + r * DOME_SPACING
       across, into, n = surface_frame(at, u, v)
       into = norm3(cross3(n, across))
-      base = add(at.(u, v), mul(n, LIFT))
+      base = add(at.(u, v), mul(n, LIFT * 1.6))
       first = sm[:pos].size / 3
       [[DOME_BASE / 2, 0], [DOME_TOP / 2, DOME_H]].each do |rad, lift|
         DOME_SEG.times do |i|

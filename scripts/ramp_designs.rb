@@ -170,7 +170,7 @@ def ramp(sc, curb, bc, d, w: 5.0, run: 6.0, landing: 4.0, wings: [5.0, 5.0], war
   case warn
   when :ramp then sc.warning(w) { |u, v| p = add(add(bl, mul(n, u)), mul(d, v)); e[p, CH * v / run] }
   when :bottom then sc.warning(w) { |u, v| p = add(add(bl, mul(n, u)), mul(d, v - 2.0)); e[p, 0] }
-  when :curb then curb_warning(sc, curb, sl, sr)
+  when :curb then curb_warning(sc, curb, sl, sr, sides: [[bl, d], [br, d]])
   end
 
   sc.joint(e[curb.at(sl - wings[0]), CH], e[tl, CH], e[tr, CH], e[curb.at(sr + wings[1]), CH])
@@ -178,9 +178,28 @@ def ramp(sc, curb, bc, d, w: 5.0, run: 6.0, landing: 4.0, wings: [5.0, 5.0], war
 end
 
 # A warning panel in radial tile, along the back of curb from s0 to s1.
-# `rise` is the slope of the surface it sits on, away from the curb.
-def curb_warning(sc, curb, s0, s1, rise: 0)
-  sc.warning(s1 - s0) { |u, v| s = s0 + u; q = add(curb.at(s), mul(curb.inward(s), v + 0.1)); [q[0], q[1], rise * (v + 0.1)] }
+# `rise` is the slope of the surface it sits on, away from the curb. `sides`
+# ([point, direction] lines, one per end) cut the ends along the path of travel,
+# as the plans draw them, instead of square to the curb.
+def curb_warning(sc, curb, s0, s1, rise: 0, sides: nil)
+  off = ->(s, v) { add(curb.at(s), mul(curb.inward(s), v + 0.1)) }
+  ends = lambda do |v|
+    next [s0, s1] unless sides
+
+    [s0, s1].zip(sides).map do |guess, (pt, dir)|
+      f = ->(s) { q = sub(off.(s, v), pt); dir[0] * q[1] - dir[1] * q[0] }
+      lo, hi = guess - 4.0, guess + 4.0
+      next guess if (f.(lo) <=> 0) == (f.(hi) <=> 0)
+
+      40.times { mid = (lo + hi) / 2; (f.(lo) <=> 0) == (f.(mid) <=> 0) ? lo = mid : hi = mid }
+      (lo + hi) / 2
+    end
+  end
+  sc.warning(s1 - s0) do |u, v|
+    a, b = ends.(v)
+    q = off.(a + (b - a) * u / (s1 - s0), v)
+    [q[0], q[1], rise * (v + 0.1)]
+  end
 end
 
 # Ground for a straight curb along z = 0: a planting strip, then sidewalk `walk`
@@ -393,7 +412,7 @@ def build_422c_square(sc)
     sc.wall([[-back, z, 0], [-back - run, z, CH], [-back, z, CH]])
     sc.wall([[-z, back, 0], [-z, back + run, CH], [-z, back, CH]])
   end
-  curb_warning(sc, curb, sa, sb)
+  curb_warning(sc, curb, sa, sb, sides: [[[-back, 0], [0, 1]], [[0, back], [1, 0]]])
   sc.joint([-back, strip, 0], [-back, back, 0], [-strip, back, 0])
   sc.joint([-back - run, strip, CH], [-back - run, back, CH])
   sc.joint([-strip, back + run, CH], [-back, back + run, CH])
@@ -440,12 +459,12 @@ def build_directional_side(sc, type)
     sc.surface([[xt, z, CH], [xe, z, CH], [xe, w6, CH], [xt, w6, CH]], kind: :curbtop)
     sc.wall([[xt, z, CH], [xb, z, 0], [xe, z, 0], [xe, z, CH]])
   end
+  sc.clear([[xb, z0, 0], [xb, z1, 0], [xb + 4, z1, 0], [xb + 4, z0, 0]])
   if type == "422d"
     sc.warning(wd) { |u, v| [xb + v, z1 - u, 0] }
   else
-    curb_warning(sc, curb, s0, s1)
+    curb_warning(sc, curb, s0, s1, sides: [[[0, z0], [1, 0]], [[0, z1], [1, 0]]])
   end
-  sc.clear([[xb, z0, 0], [xb, z1, 0], [xb + 4, z1, 0], [xb + 4, z0, 0]])
   sc.joint([xt, z0, CH], [xt, z1, CH])
   sc.joint([xb, z0, 0], [xb, z1, 0])
   sc.edge(curb)
