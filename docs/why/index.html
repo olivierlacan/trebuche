@@ -49,7 +49,10 @@
   .callouts.route li:first-child::before { background: #a23a1d; }
 
   .pull { font-size: clamp(20px, 2.8vw, 26px); line-height: 1.3; font-weight: 600; max-width: 30em; margin: 0 0 18px; border-left: 4px solid #f4c542; padding-left: 16px; }
-  .fig-scroll { overflow-x: auto; }
+  .fig.archive { background: #fff; }
+  .card .num { display: block; }
+  .fig.archive img { display: block; width: 100%; height: auto; mix-blend-mode: multiply; }
+  .fig.archive img + img { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -120,14 +123,14 @@
           <rect x="0" y="-56" width="150" height="66" fill="#eef1f1"/>
           <rect x="0" y="0" width="150" height="10" fill="url(#earth)"/>
           <rect x="0" y="0" width="90" height="2.5" fill="#3f4846"/>
-          <path d="M90 10V-6H150V-2H96V10Z" fill="#d8cfbb"/>
-          <path d="M90 0V-6H150" fill="none" stroke="#8e8574" stroke-width=".35"/>
-          <path d="M89.75 -2.8V-6.25H93.2" fill="none" stroke="#2f3439" stroke-width=".7" stroke-linejoin="miter"/>
+          <path d="M90 10V-5A1 1 0 0 1 91 -6H150V-2H96V10Z" fill="#d8cfbb"/>
+          <path d="M90 0V-5A1 1 0 0 1 91 -6H150" fill="none" stroke="#8e8574" stroke-width=".35"/>
+          <path d="M90.15 -4.85A.85 .85 0 0 1 91.15 -5.85" fill="none" stroke="#2f3439" stroke-width=".5"/>
           <use href="#chair" x="90"/>
           <path d="M90 -6H30" stroke="#a23a1d" stroke-width=".35" stroke-dasharray="1.2 1"/>
           <path d="M101 0V-6M100 0H102M100 -6H102" stroke="#2b2b2b" stroke-width=".35"/>
           <text x="103" y="-3.2" font-size="2.8" fill="#2b2b2b">6 in</text>
-          <text x="104" y="-14" font-size="2.6" fill="#4c4a44">Old corner, steel edge,</text>
+          <text x="104" y="-14" font-size="2.6" fill="#4c4a44">Old corner, armored edge,</text>
           <text x="104" y="-10.6" font-size="2.6" fill="#4c4a44">no ramp</text>
           <text x="31" y="-7.4" font-size="2.6" fill="#a23a1d">top of curb</text>
         </svg>
@@ -202,8 +205,8 @@
             <rect x="-1" y="-15" width="25" height="17" fill="#eef1f1"/>
             <rect x="-1" y="0" width="25" height="2" fill="url(#earth)"/>
             <rect x="-1" y="0" width="16" height="1.2" fill="#3f4846"/>
-            <path d="M15 2V-6H24V2Z" fill="#d8cfbb"/>
-            <path d="M14.85 -3.3V-6.15H17.4" fill="none" stroke="#2f3439" stroke-width=".45"/>
+            <path d="M15 2V-5A1 1 0 0 1 16 -6H24V2Z" fill="#d8cfbb"/>
+            <path d="M15.15 -4.85A.85 .85 0 0 1 16.15 -5.85" fill="none" stroke="#2f3439" stroke-width=".4"/>
             <path d="M-1 -6H15" stroke="#a23a1d" stroke-width=".22" stroke-dasharray=".8 .6"/>
             <text x="19.5" y="-7.4" font-size="2.2" fill="#2b2b2b" text-anchor="middle">6 in</text>
           </g>
@@ -216,74 +219,97 @@
 
   <section class="wrap" id="steel" aria-labelledby="steel-h">
     <h2 id="steel-h">Seattle's steel-edged corners</h2>
-    <p class="section-lede">Walk through Phinney Ridge, Ballard, Capitol Hill or most of Seattle's older neighborhoods and
-      you'll find corners where a strip of steel runs along the top edge of the curb, often rusted, sometimes stamped with a
-      contractor's name and a year.</p>
+    <p class="section-lede">Walk through almost any of Seattle's older neighborhoods and you'll find corners where a strip of
+      steel caps the top edge of the curb, worn smooth on top and rusting down the face. The city called it "curb armor",
+      and for a while it was the standard.</p>
 
     <div class="two">
       <figure class="fig">
         <svg viewBox="0 -17 44 27" role="img" aria-labelledby="f3-t">
-          <title id="f3-t">Close-up cross-section of an old steel-edged curb: a vertical 6 inch concrete face with a steel angle along its top edge, anchored into the concrete. Numbered callouts mark the square edge, the slick steel top, rust, and a crack where rust has pushed the concrete apart.</title>
+          <title id="f3-t">Close-up cross-section of an old armored curb: a vertical 6 inch concrete face whose top corner, rounded to a 1 inch radius, is capped by a curved steel bar anchored into the concrete. Numbered callouts mark the steel nose, the slick wet steel, rust on the face, and a crack running from the anchor.</title>
           <rect x="0" y="-17" width="44" height="27" fill="#eef1f1"/>
           <rect x="0" y="0" width="44" height="10" fill="url(#earth)"/>
           <rect x="0" y="0" width="20" height="2.5" fill="#3f4846"/>
-          <path d="M20 10V-6H44V-1.5H31V10Z" fill="#d8cfbb"/>
-          <!-- Rust weeping down the face and spreading under the steel -->
-          <rect x="20.05" y="-3.2" width="1.4" height="3.1" fill="url(#rust)"/>
-          <path d="M23.4 -5.6Q24.4 -5.1 25.6 -5.4" stroke="#9a4a1f" stroke-width=".35" fill="none" opacity=".7"/>
-          <!-- Crack from rust jacking -->
-          <path d="M23.6 -5.6L24.2 -4.4L23.7 -3.4L24.6 -2.2L24.1 -1.1L24.9 .2" stroke="#5a4f3f" stroke-width=".22" fill="none"/>
-          <!-- Anchor strap (hidden in the concrete) -->
-          <path d="M22 -5.6L25.5 -2.4" stroke="#2f3439" stroke-width=".3" stroke-dasharray=".5 .4"/>
-          <!-- The steel angle, its top leg lifted at the end by rust -->
-          <path d="M20.2 -2.9V-6.15L23.35 -6.35" fill="none" stroke="#2f3439" stroke-width=".55" stroke-linejoin="miter"/>
-          <path d="M20 0V-6.4" stroke="#2f3439" stroke-width=".12"/>
+          <path d="M20 10V-5A1 1 0 0 1 21 -6H44V-1.5H31V10Z" fill="#d8cfbb"/>
+          <path d="M20 0V-5A1 1 0 0 1 21 -6H44" fill="none" stroke="#8e8574" stroke-width=".15"/>
+          <!-- Rust weeping down the face, and along the top behind the bar -->
+          <rect x="20.04" y="-4.8" width="1.3" height="4.7" fill="url(#rust)"/>
+          <path d="M21.2 -5.94Q22 -5.75 23 -5.9" stroke="#9a4a1f" stroke-width=".3" fill="none" opacity=".6"/>
+          <!-- The bar's web, angled into the curb, and its open anchorage (hidden in the concrete) -->
+          <path d="M20.4 -5.6L21.9 -4.1" stroke="#2f3439" stroke-width=".22"/>
+          <path d="M21.9 -4.1L23.3 -2.7" stroke="#2f3439" stroke-width=".22" stroke-dasharray=".45 .35"/>
+          <!-- Crack from rust jacking at the anchor -->
+          <path d="M23.3 -2.7L23.9 -1.9L23.5 -1.1L24.3 -.2L23.9 .8" stroke="#5a4f3f" stroke-width=".2" fill="none"/>
+          <!-- The curved steel cap -->
+          <path d="M20.12 -4.85A.88 .88 0 0 1 21.15 -5.88" fill="none" stroke="#2f3439" stroke-width=".3"/>
           <!-- Water film on the steel -->
-          <path d="M19.9 -6.75Q21.6 -6.6 23.5 -6.8" stroke="#5b8fc9" stroke-width=".3" fill="none"/>
-          <circle cx="21.2" cy="-6.85" r=".22" fill="#5b8fc9"/><circle cx="22.6" cy="-6.9" r=".18" fill="#5b8fc9"/>
-          <path d="M23.5 -6.4H44" stroke="#8e8574" stroke-width=".2"/>
+          <path d="M19.72 -4.7A1.3 1.3 0 0 1 21.1 -6.3H22.4" stroke="#5b8fc9" stroke-width=".22" fill="none"/>
+          <circle cx="20.15" cy="-5.95" r=".17" fill="#5b8fc9"/><circle cx="21.8" cy="-6.42" r=".14" fill="#5b8fc9"/>
           <!-- Callouts -->
           <g font-size="1.7" font-weight="700" text-anchor="middle" fill="#fff">
-            <path d="M16 -9.5L19.9 -6.3" stroke="#a23a1d" stroke-width=".18"/>
+            <path d="M16 -9.5L20.2 -5.75" stroke="#a23a1d" stroke-width=".18"/>
             <circle cx="15.2" cy="-10.3" r="1.35" fill="#a23a1d"/><text x="15.2" y="-9.7">1</text>
-            <path d="M22 -12.2L21.8 -7.2" stroke="#a23a1d" stroke-width=".18"/>
-            <circle cx="22" cy="-13.2" r="1.35" fill="#a23a1d"/><text x="22" y="-12.6">2</text>
-            <path d="M16.4 -1.8L20.2 -1.6" stroke="#a23a1d" stroke-width=".18"/>
+            <path d="M22.4 -12.2L21.6 -6.5" stroke="#a23a1d" stroke-width=".18"/>
+            <circle cx="22.4" cy="-13.2" r="1.35" fill="#a23a1d"/><text x="22.4" y="-12.6">2</text>
+            <path d="M16.4 -1.8L20.3 -1.8" stroke="#a23a1d" stroke-width=".18"/>
             <circle cx="15.2" cy="-1.8" r="1.35" fill="#a23a1d"/><text x="15.2" y="-1.2">3</text>
-            <path d="M27.8 -10.4L24 -6.4" stroke="#a23a1d" stroke-width=".18"/>
-            <circle cx="28.6" cy="-11.2" r="1.35" fill="#a23a1d"/><text x="28.6" y="-10.6">4</text>
+            <path d="M28 -9.9L23.6 -1.6" stroke="#a23a1d" stroke-width=".18"/>
+            <circle cx="28.6" cy="-10.8" r="1.35" fill="#a23a1d"/><text x="28.6" y="-10.2">4</text>
           </g>
           <path d="M10 0V-6M9.4 0H10.6M9.4 -6H10.6" stroke="#2b2b2b" stroke-width=".18"/>
           <text x="11" y="-2.6" font-size="1.5" fill="#2b2b2b">6 in</text>
           <text x="33" y="-7.6" font-size="1.4" fill="#4c4a44">sidewalk</text>
           <text x="2" y="-.6" font-size="1.4" fill="#4c4a44">street</text>
         </svg>
-        <figcaption>Cross-section of an old steel-edged curb, at about four times the scale of the drawings above.
-          The steel is drawn a little thicker than it is so it shows.</figcaption>
+        <figcaption>Cross-section of an armored curb, after the 1919 Standard Plans (below), at about four times the scale
+          of the drawings above. The steel is drawn a little thicker than it is so it shows.</figcaption>
       </figure>
 
       <div>
         <ol class="callouts">
-          <li><strong>A square edge, with no give</strong>Concrete curbs wear to a slightly rounded edge. Steel doesn't:
-            it stays a hard 90° corner that stops a caster dead and catches a footplate or a stroller's front wheel.</li>
+          <li><strong>A hard nose on a 6 inch wall</strong>The bar wraps the curb's corner in a 1 inch curve. That kept iron
+            wheels from chipping the concrete, and it does nothing for a 5 inch caster: below it is still a vertical face.
+            Plain concrete edges crumble over time; the steel holds its shape, so the step never softens.</li>
           <li><strong>Slick in the rain</strong>Smooth steel is more slippery than concrete when it's wet, which in Seattle
             is much of the year. That's the strip a cane tip, crutch or shoe lands on when stepping down.</li>
-          <li><strong>Rust</strong>The steel has been rusting for decades. Rust takes up more room than the steel it comes
+          <li><strong>Rust</strong>The 1919 rules required the bars to be galvanized. A century of Seattle rain later, the
+            coating has worn through on many corners and the steel rusts. Rust takes up more room than the steel it comes
             from, so it pushes outward.</li>
-          <li><strong>Lifted edges and cracks</strong>That swelling lifts the steel and cracks the concrete around it,
-            leaving lips and gaps that catch small wheels and cane tips.</li>
+          <li><strong>Lifted edges and cracks</strong>The bar is anchored deep into the curb, so when it swells it cracks the
+            concrete around it and can lift, leaving lips and gaps that catch small wheels and cane tips.</li>
         </ol>
       </div>
     </div>
 
+    <h3 style="margin-top:36px">In the city's own words</h3>
     <div class="prose">
-      <p>The steel was put there to protect the concrete. Many of these corners date from the early 1900s, when
-        iron-rimmed wagon wheels cutting the corner would chip a bare concrete curb; cities around the country
-        <a href="https://slabtowntours.com/?p=638">armored their curbs</a> the same way. The steel did its job: these
-        corners have outlasted almost everything around them. That's the problem. They were built long before anyone
-        expected a wheelchair on the sidewalk, and they don't wear out on their own.</p>
-      <p>A ramp can't simply be notched into a corner like this. Adding one means rebuilding the corner, which is why
-        steel-edged corners tend to wait until someone asks.</p>
+      <p>Seattle's 1919 <em>Standard Plans and Specifications</em>, the rulebook for every street the city built, include
+        "Armored Concrete Curbing" (Section 163). It was built "in precisely the same manner" as an ordinary curb, with a
+        steel bar set along the top edge while the concrete was still wet. Section 45 describes the bar itself: "curb armor of
+        open anchorage type known as Kahn Curb Bar", galvanized steel, "accurately bent" to follow the curve at corners, and
+        never in pieces shorter than three feet.</p>
+    </div>
+    <figure class="fig archive">
+      <img src="1919-concrete-curbing.png" width="1200" height="575"
+        alt="Scanned 1919 drawing titled Concrete Curbing: cross-sections of curb types A, B and C. Types A and C have a vertical 6 inch face with a 1 inch radius at the top corner.">
+      <img src="1919-curb-armor.png" width="1199" height="626"
+        alt="Scanned 1919 drawing titled Curb Armor: the bar's cross-section, a curved cap 1 and 5/8 inches across on a thin web; a side view showing open, V-shaped anchor loops; and a small section of a curb with the bar on its top corner.">
+      <figcaption>City of Seattle, <em>Standard Plans and Specifications</em>, 1919: "Concrete Curbing" (types A and C are the
+        ones armored) and "Curb Armor". The bar's curved cap is 1⅝ in across, over a ³⁄₁₆ in web with open anchor loops
+        that lock it into the concrete. From the
+        <a href="https://www.seattle.gov/utilities/construction-resources/standards-and-guidelines/standard-specs-and-plans/archive">city's archive of past standards</a>
+        (<a href="https://www.seattle.gov/documents/Departments/SPU/construction-resources/standards-guidelines/Specs-Plans_Archive/1919StandardPlansSpecs.pdf#page=18">Section 45</a>,
+        <a href="https://www.seattle.gov/documents/Departments/SPU/construction-resources/standards-guidelines/Specs-Plans_Archive/1919StandardPlansSpecs.pdf#page=88">Section 163</a>).</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Armored curbs weren't a Seattle invention. Cities across the country
+        <a href="https://slabtowntours.com/?p=638">armored their curbs</a> in the same era, to keep iron-rimmed wagon wheels
+        from chipping the edges. Seattle naturalist David B. Williams even suggests
+        <a href="https://geologywriter.com/streetsmartnaturalist/stories-in-stone-blog/good-old-cobblestones/">reading a
+        neighborhood's age from its curbs</a>: granite is oldest, concrete with a metal rim next, plain concrete newest.</p>
+      <p>The armor did its job: these corners have outlasted almost everything around them. That's the problem. They were
+        built decades before anyone planned for a wheelchair on the sidewalk, and they don't wear out on their own. Adding a
+        ramp means replacing the curb at that corner, steel and all, so these corners tend to wait until someone asks.</p>
     </div>
   </section>
 
@@ -381,8 +407,9 @@
   <section class="wrap" id="who" aria-labelledby="who-h">
     <h2 id="who-h">Who uses curb ramps</h2>
     <p class="pull">Curb ramps were won by disabled people, and almost everyone ends up using them.</p>
-    <p class="section-lede">In 1972, pressed by disabled activists, Berkeley poured one of the country's first official curb ramps at
-      an intersection on Telegraph Avenue. Parents, delivery workers and travelers took to them right away, which is why
+    <p class="section-lede">Around 1970, students with disabilities at UC Berkeley, Ed Roberts and the "Rolling Quads" among
+      them, pushed the city of Berkeley to cut ramps into its curbs, some of the first anywhere. Parents, delivery workers and
+      travelers took to them right away, which is why
       <a href="https://ssir.org/articles/entry/the_curb_cut_effect">"the curb-cut effect"</a> now names any change built for
       one group that turns out to help nearly everyone.</p>
     <div class="cards three">
@@ -432,6 +459,52 @@
       <a class="btn" href="../seattle/curb-ramps/">What a good ramp looks like</a>
     </div>
   </section>
+
+  <section class="wrap" id="more" aria-labelledby="more-h">
+    <h2 id="more-h">Listen, watch and read</h2>
+    <p class="section-lede">The people who fought for curb ramps, and the historians who've written about them, tell this story better than we can.</p>
+    <div class="cards three">
+      <article class="card">
+        <span class="num">Podcast · 2026</span>
+        <h3>Talking Headways: Ed Roberts, Curb Cuts and the Origins of the Disability Movement</h3>
+        <p>Streetsblog's podcast with Scot Danforth (Chapman University), author of <em>An Independent Man: Ed Roberts and the
+          Fight for Disability Rights</em>, on how Berkeley's curb cuts were won.</p>
+        <a href="https://usa.streetsblog.org/2026/02/05/talking-headways-podcast-ed-roberts-curb-cuts-and-the-origins-of-the-disability-movement">Listen →</a>
+      </article>
+      <article class="card">
+        <span class="num">Podcast · 2018</span>
+        <h3>99% Invisible: Curb Cuts</h3>
+        <p>Episode 308, reported by Cynthia Gorney: Ed Roberts, the Rolling Quads, Berkeley's early curb cuts, and the road to
+          the Americans with Disabilities Act.</p>
+        <a href="https://99percentinvisible.org/episode/308-curb-cuts/">Listen →</a>
+      </article>
+      <article class="card">
+        <span class="num">Video · PBS</span>
+        <h3>American Experience: "They Took Sledgehammers to Sidewalks"</h3>
+        <p>A seven-minute clip on the curb-cut effect and the Berkeley students who organized for access to their city.</p>
+        <a href="https://wgbh.org/tv-shows/american-experience/clip/they-took-sledgehammers-to-sidewalks-heres-why">Watch →</a>
+      </article>
+      <article class="card">
+        <span class="num">Book · 2019</span>
+        <h3>Accessible America: A History of Disability and Design</h3>
+        <p>Bess Williamson (NYU Press). How ramps, curb cuts and accessible design came to be in the US, from World War II on.</p>
+        <a href="https://nyupress.org/9781479802494/accessible-america/">Publisher →</a>
+      </article>
+      <article class="card">
+        <span class="num">Book · 2017</span>
+        <h3>Building Access: Universal Design and the Politics of Disability</h3>
+        <p>Aimi Hamraie (University of Minnesota Press). Its chapter "Sloped Technoscience" is about curb cuts and the disabled
+          activists who made them.</p>
+        <a href="https://www.upress.umn.edu/9781517901646/building-access/">Publisher →</a>
+      </article>
+      <article class="card">
+        <span class="num">Essay · 2017</span>
+        <h3>The Curb-Cut Effect</h3>
+        <p>Angela Glover Blackwell in the <em>Stanford Social Innovation Review</em>, on why changes made for one group so often help everyone.</p>
+        <a href="https://ssir.org/articles/entry/the_curb_cut_effect">Read →</a>
+      </article>
+    </div>
+  </section>
 </main>
 
 <footer class="foot">
@@ -440,7 +513,8 @@
     <p class="small">Not affiliated with the City of Seattle. Drawings are to scale unless noted; wheel sizes are typical, not
       exact. Sources: Seattle's <a href="https://streetsillustrated.seattle.gov/design-standards/roadway-construction/curbs">Streets Illustrated</a>
       (6 inch standard curb), the <a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=209">2026 Standard Plans</a>
-      (ramp dimensions), the <a href="https://seattle.gov/documents/departments/sdot/services/curbsettlementnoticeenglish.pdf">settlement notice</a>,
+      (ramp dimensions), the <a href="https://www.seattle.gov/documents/Departments/SPU/construction-resources/standards-guidelines/Specs-Plans_Archive/1919StandardPlansSpecs.pdf">1919 Standard Plans and Specifications</a>
+      (curb armor; drawings reproduced from the scan), the <a href="https://seattle.gov/documents/departments/sdot/services/curbsettlementnoticeenglish.pdf">settlement notice</a>,
       and Angela Glover Blackwell's <a href="https://ssir.org/articles/entry/the_curb_cut_effect">"The Curb-Cut Effect"</a>.</p>
   </div>
 </footer>
