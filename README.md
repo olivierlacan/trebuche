@@ -183,6 +183,20 @@ used to render `docs/apple-touch-icon.png` (phones apply their own mask). The li
 preview images (`docs/og.png`, `docs/seattle/phinney-ridge/og.png`) are rendered from
 `logo.svg`. The previous street-level logo is kept as `docs/logo-street.svg`.
 
+## Curb ramp designs
+
+`docs/seattle/curb-ramps/` illustrates every curb ramp design in Seattle's 2026 Standard
+Plans, in the logo's style: 422A (with wings, and with side curbs), 422B, 422C, 422D,
+422E, 422F, 422G and 422H. Each card says when the city uses the design, lists its key
+dimensions, and links to its plan sheet (and to AR for the three designs modeled there).
+
+`ruby scripts/catalog.rb` draws the illustrations (`docs/seattle/curb-ramps/<type>.svg`,
+standard library only; pass type IDs to redraw just those). They're to scale in plan, from
+each sheet's dimensions, with the curb drawn about 2.6 times its real height as in the logo.
+Corner designs use a curb radius that fits each one (12 ft for 422C, 16 ft for 422F,
+20 ft for 422G, 30 ft for the directional ramps). Broom finishes follow each sheet:
+parallel to the curb on 422A, perpendicular or radial on 422B, 422C and 422G.
+
 ## Curb ramp in AR
 
 `docs/ar/` shows true-scale City of Seattle curb ramps that neighbors can place at a corner
