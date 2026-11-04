@@ -56,6 +56,7 @@ one), and a table by neighborhood with survey coverage. Downloads are cached in
 | Page | File | What |
 |---|---|---|
 | Home | `docs/index.html` | The project, not tied to a place: what it does, how it works, how sure "missing" is, how to start a street, and a card per street |
+| Why ramps matter | `docs/why/index.html` | Why curb ramps matter and who uses them, with to-scale drawings: a wheelchair at a bare curb vs. a ramp, common wheel sizes against a 6 in curb, Seattle's old steel-edged corners, and the detour when only one side of a crossing has a ramp. Hand-written, with inline SVG |
 | Seattle | `docs/seattle/index.html` | How to ask Seattle for a ramp, what Seattle's data gets wrong, other Seattle tools, and Seattle's streets |
 | Hotspots | `docs/seattle/hotspots/index.html` | Citywide map and ranking of where missing ramps cluster, and how to organize |
 | A street | `docs/seattle/<neighborhood>/index.html` | e.g. Phinney Ridge for Dayton Ave N: live counts, the corner strip, goals, how to help |
