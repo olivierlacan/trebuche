@@ -239,6 +239,24 @@ links back). The page tells people to stay on the sidewalk, and says plainly tha
 visual aid: phone AR drifts a few percent and assumes flat ground, and SDOT engineers
 choose the actual design.
 
+## Accessibility
+
+A site about accessibility has to be accessible. The target is WCAG 2.2 AA.
+`node scripts/a11y-scan.js` runs axe-core over every page and the map's interactive states,
+in light and dark mode, at desktop and phone widths (setup is at the top of the script).
+Beyond what axe checks automatically:
+
+- **Keyboard:** map markers are buttons (Tab, then Enter or Space). A skip link jumps past
+  the map. The panel tabs follow the ARIA tabs pattern with arrow keys. The hotspot table
+  sorts with real buttons.
+- **Targets:** links and controls are at least 24 px. Map markers that overlap when zoomed
+  out are covered by WCAG 2.5.8's "equivalent" exception: every corner is also a button
+  under "All corners", and every hotspot has a card.
+- **Not color alone:** missing ramps are black X marks, unknowns are question marks, and
+  partial corners carry a small X.
+- **Other:** visible 3 px focus rings everywhere, reflow at 320 px with no sideways
+  scrolling, and smooth scrolling turned off under `prefers-reduced-motion`.
+
 ## Publishing
 
 `.github/workflows/pages.yml` refetches every source, rebuilds, and deploys `docs/` to

@@ -33,6 +33,7 @@
       against public data, shows the evidence, and helps neighbors ask the city to build what's missing.</p>
     <div class="ctas">
       <a class="btn primary" href="#where">See where we're working</a>
+      <a class="btn" href="seattle/hotspots/">Seattle's hotspot map</a>
       <a class="btn" href="#how">How it works</a>
     </div>
   </div>
@@ -41,8 +42,15 @@
 <main>
   <section class="wrap" id="where" aria-labelledby="where-h">
     <h2 id="where-h">Where we're working</h2>
-    <p class="section-lede">Each street gets its own page and map, with every corner checked and ready-to-file requests.
-      Cities have their own pages for how to ask that city for a ramp.</p>
+    <p class="section-lede"><span id="where-summary"></span>Each street gets its own page and map, with every corner checked
+      and ready-to-file requests. Cities have their own pages for how to ask that city for a ramp.</p>
+    <a class="feature" href="seattle/hotspots/">
+      <span class="where">Seattle · citywide</span>
+      <h3>Where Seattle's missing curb ramps cluster</h3>
+      <span id="hotspot-summary">Every intersection in the city checked for curb ramps, and grouped into hotspots neighbors can take on together.</span>
+      <span class="go">See the hotspot map →</span>
+    </a>
+    <h3 class="cards-h">Streets</h3>
     <div class="areas" data-area-cards data-base="" data-show-city>
       <a class="area soon" href="#start">
         <span class="where">Your neighborhood?</span>
@@ -51,7 +59,7 @@
         <span class="go">How to start →</span>
       </a>
     </div>
-    <p class="small" style="margin-top:14px">Cities: <a href="seattle/">Seattle</a> · In Seattle, see <a href="seattle/hotspots/">where missing ramps cluster</a> citywide.</p>
+    <p class="small" style="margin-top:14px">Cities: <a href="seattle/">Seattle</a> (how to ask, <a href="seattle/hotspots/">hotspots</a>, <a href="seattle/curb-ramps/">the city's ramp designs</a>)</p>
   </section>
 
   <section class="wrap" id="how" aria-labelledby="how-h">
@@ -101,9 +109,10 @@
         <li><strong>Project Sidewalk or OpenStreetMap coverage.</strong> <a href="https://sidewalk-sea.cs.washington.edu/">Project Sidewalk</a> runs in dozens of cities, and anyone can add curb details to <a href="https://www.openstreetmap.org/">OpenStreetMap</a>.</li>
         <li><strong>Neighbors who'll walk the street.</strong> Data gets you most of the way; a quick look settles the uncertain corners.</li>
       </ol>
-      <p>Today the scripts are set up for one street at a time. Adding another means adjusting a few settings and checking the
-        results. <a href="https://github.com/olivierlacan/trebuche/issues/new?title=Add%20a%20street%3A%20">Open an issue on GitHub</a>
-        with the street, the stretch and the city.</p>
+      <p>In Seattle, adding a street is one entry in a settings file plus a check of the results. Start from the
+        <a href="seattle/hotspots/">hotspot map</a> to pick one, then
+        <a href="https://github.com/olivierlacan/trebuche/issues/new?title=Add%20a%20street%3A%20&amp;labels=new-street">open an issue on GitHub</a>
+        with the street, the stretch and the city. Other cities need their data sources wired up first.</p>
     </div>
   </section>
 
@@ -125,6 +134,21 @@
 </footer>
 
 <script src="areas.js"></script>
+<script src="seattle/hotspots/summary.js"></script>
 <script src="area-cards.js"></script>
+<script>
+  // Totals across every street, and the citywide hotspot numbers.
+  (() => {
+    const A = window.AREAS || [], S = window.HOTSPOT_SUMMARY;
+    const n = x => x.toLocaleString("en-US");
+    const cities = new Set(A.map(a => a.city)).size;
+    if (A.length) document.getElementById("where-summary").textContent =
+      `${A.length} streets in ${cities} ${cities > 1 ? "cities" : "city"}: ${n(A.reduce((t, a) => t + a.corners, 0))} corners checked, ` +
+      `${n(A.reduce((t, a) => t + a.no_ramp, 0))} with no curb ramp. `;
+    if (S) document.getElementById("hotspot-summary").textContent =
+      `${n(S.no_ramp)} Seattle intersections have a sidewalk but no curb ramp. They bunch up in ${S.hotspots} hotspots, ` +
+      `led by ${S.top.map(t => t.name).join("; ")}. Find the one near you.`;
+  })();
+</script>
 </body>
 </html>

@@ -7,6 +7,8 @@ const REPO = "olivierlacan/trebuche";
 const esc = s => String(s ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 const fmt = n => n.toLocaleString("en-US");
 const T = H.totals;
+const smooth = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
 
 // ------------------------------------------------------------ stats
 const pct = Math.round((100 * T.no_ramp) / T.with_sidewalk);
@@ -18,7 +20,8 @@ document.getElementById("stat-grid").innerHTML = [
 ].map(([n, label]) => `<div class="stat"><div class="n"><span>${n}</span></div><div class="label">${label}</div></div>`).join("");
 
 // ------------------------------------------------------------ map
-const map = L.map("hotmap", { preferCanvas: true, scrollWheelZoom: false, maxZoom: 19 });
+// Canvas dots are tiny; a wide hit tolerance makes each one a ~24 px target.
+const map = L.map("hotmap", { preferCanvas: true, renderer: L.canvas({ tolerance: 9 }), scrollWheelZoom: false, maxZoom: 19 });
 L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -85,6 +88,12 @@ const markers = H.hotspots.map((s, i) => L.marker([s.lat, s.lon], {
   icon: L.divIcon({ className: "", html: `<div class="hot-label">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
   title: `Hotspot ${i + 1}: ${s.name}`, keyboard: true,
 }).on("click", () => focusSpot(i, true)).addTo(map));
+// Keyboard: Enter or Space on a focused hotspot marker zooms to it.
+document.getElementById("hotmap").addEventListener("keydown", e => {
+  const el = e.target.closest?.(".leaflet-marker-icon");
+  const i = markers.findIndex(m => m.getElement() === el);
+  if (i >= 0 && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); focusSpot(i, true); }
+});
 
 const params = new URLSearchParams(location.search);
 const startSpot = Number(params.get("spot")) - 1;
@@ -98,7 +107,7 @@ function focusSpot(i, scrollToCard) {
   const u = new URL(location.href);
   u.searchParams.set("spot", i + 1);
   history.replaceState(null, "", u);
-  if (scrollToCard) document.getElementById(`spot-${i + 1}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  if (scrollToCard) document.getElementById(`spot-${i + 1}`)?.scrollIntoView({ behavior: smooth, block: "nearest" });
 }
 
 // ------------------------------------------------------------ hotspot cards
@@ -143,7 +152,7 @@ list.addEventListener("click", e => {
   const b = e.target.closest("[data-spot]");
   if (!b) return;
   focusSpot(+b.dataset.spot, false);
-  document.getElementById("hotmap").scrollIntoView({ behavior: "smooth", block: "center" });
+  document.getElementById("hotmap").scrollIntoView({ behavior: smooth, block: "center" });
 });
 if (startSpot >= 0 && H.hotspots[startSpot]) {
   focusSpot(startSpot, false);
@@ -166,21 +175,19 @@ function renderHoods() {
     return (typeof x === "string" ? x.localeCompare(y) : (x ?? -1) - (y ?? -1)) * sort.dir;
   });
   document.getElementById("hoods").innerHTML =
-    `<thead><tr>${COLS.map(([k, t]) => `<th scope="col" data-k="${k}" ${sort.key === k ? `aria-sort="${sort.dir < 0 ? "descending" : "ascending"}"` : ""} tabindex="0">${t}${sort.key === k ? (sort.dir < 0 ? " ↓" : " ↑") : ""}</th>`).join("")}</tr></thead>` +
+    `<caption class="visually-hidden">Neighborhoods by intersections with no curb ramp. Column headers are buttons that sort the table.</caption>` +
+    `<thead><tr>${COLS.map(([k, t]) => `<th scope="col" ${sort.key === k ? `aria-sort="${sort.dir < 0 ? "descending" : "ascending"}"` : ""}><button type="button" class="sort" data-k="${k}">${t}<span aria-hidden="true">${sort.key === k ? (sort.dir < 0 ? " ↓" : " ↑") : ""}</span></button></th>`).join("")}</tr></thead>` +
     `<tbody>${sorted.map(r => `<tr>${COLS.map(([k, , f]) => `<td>${f(r[k], r)}</td>`).join("")}</tr>`).join("")}</tbody>`;
 }
 const hoodTable = document.getElementById("hoods");
-const resort = e => {
-  const th = e.target.closest("th[data-k]");
-  if (!th || (e.type === "keydown" && e.key !== "Enter" && e.key !== " ")) return;
-  e.preventDefault();
-  const k = th.dataset.k;
+hoodTable.addEventListener("click", e => {
+  const b = e.target.closest("button.sort");
+  if (!b) return;
+  const k = b.dataset.k;
   sort = { key: k, dir: sort.key === k ? -sort.dir : k === "name" ? 1 : -1 };
   renderHoods();
-  hoodTable.querySelector(`th[data-k="${k}"]`).focus();
-};
-hoodTable.addEventListener("click", resort);
-hoodTable.addEventListener("keydown", resort);
+  hoodTable.querySelector(`button.sort[data-k="${k}"]`).focus();
+});
 renderHoods();
 
 document.getElementById("refreshed").textContent = `Data refreshed ${H.generated.slice(0, 10)}.`;

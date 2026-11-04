@@ -40,7 +40,9 @@
   table.hoods { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
   table.hoods th, table.hoods td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; }
   table.hoods th:first-child, table.hoods td:first-child { text-align: left; }
-  table.hoods th { font-size: 13px; color: var(--muted); font-weight: 600; cursor: pointer; white-space: nowrap; }
+  table.hoods th { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  table.hoods th button.sort { font: inherit; color: inherit; background: none; border: 0; padding: 4px 2px; min-height: 24px; cursor: pointer; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   table.hoods th[aria-sort] { color: var(--fg); }
   .table-scroll { overflow-x: auto; }
   .share { display: inline-block; width: 60px; height: 8px; background: var(--line); border-radius: 4px; vertical-align: middle; margin-left: 8px; overflow: hidden; }
@@ -50,6 +52,7 @@
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header class="hero">
   <div class="wrap">
@@ -65,7 +68,7 @@
   </div>
 </header>
 
-<main>
+<main id="main" tabindex="-1">
   <section class="wrap stats" aria-labelledby="now-h">
     <h2 id="now-h">Citywide</h2>
     <p class="section-lede">Counting street intersections that have a sidewalk next to them.</p>
@@ -76,7 +79,9 @@
     <h2 id="map-h">The map</h2>
     <p class="section-lede">Each square is about four blocks across (450 m), shaded by how many of its intersections have no curb ramp.
       Numbers mark the hotspots below. Zoom in to see each intersection.</p>
-    <div id="hotmap" role="application" aria-label="Map of Seattle intersections without curb ramps"></div>
+    <p><a class="small" href="#spots-h">Skip the map, to the list of hotspots</a></p>
+    <div id="hotmap" role="region" aria-label="Map of Seattle intersections without curb ramps" aria-describedby="hotmap-help"></div>
+    <p id="hotmap-help" hidden>Numbered hotspot markers are buttons: press Tab to reach them and Enter to zoom to one. The same hotspots are listed after the map.</p>
     <div class="map-tools">
       <label><input type="checkbox" id="show-all"> Also show intersections with ramps and unknowns</label>
       <span class="small" id="map-key"></span>

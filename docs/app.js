@@ -248,7 +248,8 @@ function iconFor(c) {
     html: svgFor(kind(c), ageColor(c.city_install_date), s, {
       work: cornerWork(c), filed: !!c.request_filed, selected: state.selected.has(c.corner_id),
     }),
-    iconSize: [s, s], iconAnchor: [s / 2, s / 2],
+    // At least 24 px to tap (WCAG 2.5.8), however small the drawing.
+    iconSize: [Math.max(s, 24), Math.max(s, 24)], iconAnchor: [Math.max(s, 24) / 2, Math.max(s, 24) / 2],
   });
 }
 for (const c of corners) {
@@ -359,7 +360,8 @@ function selectCorner(id, { pan = true } = {}) {
   renderCorner();
   showTab("corner");
   if (window.matchMedia("(max-width: 760px)").matches && !pan) {
-    document.getElementById("pane-corner").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("pane-corner").scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
   }
 }
 
@@ -389,7 +391,7 @@ function renderCorner() {
   const wos = (c.work_orders || []).filter(w => workState(w));
 
   el.innerHTML = `
-    <h3 style="margin-top:14px">${esc(cornerTitle(c))}</h3>
+    <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
     ${c.corner_type !== "corner" ? `<p class="small">This side of the T-intersection has no side street, so it only needs a ramp for crossing ${MAIN_STREET}.</p>` : ""}
     <p><span class="status ${cls}">${esc(label)}</span>
        ${work ? `<span class="status ${work}">${work === "ongoing" ? "City work this week" : "City work planned"}</span>` : ""}
@@ -426,7 +428,7 @@ function renderCorner() {
     </table>
 
     <h2>Request text</h2>
-    <pre class="request">${esc(requestText(c))}</pre>
+    <pre class="request" tabindex="0" role="region" aria-label="Request text">${esc(requestText(c))}</pre>
     <p class="small">Corner ID <code>${esc(c.corner_id)}</code> ·
       <a href="https://www.google.com/maps/@?api=1&amp;map_action=pano&amp;viewpoint=${c.lat},${c.lon}" target="_blank" rel="noopener">Street View</a> ·
       <a href="https://www.openstreetmap.org/?mlat=${c.lat}&amp;mlon=${c.lon}#map=20/${c.lat}/${c.lon}" target="_blank" rel="noopener">OpenStreetMap</a></p>`;
@@ -521,7 +523,7 @@ function renderGroup() {
       <a class="button" href="${issueUrl(cs)}" target="_blank" rel="noopener">We filed these</a>
     </div>
     <h2>Neighborhood letter</h2>
-    <pre class="request" id="letter">${esc(letterText(cs))}</pre>
+    <pre class="request" id="letter" tabindex="0" role="region" aria-label="Neighborhood letter">${esc(letterText(cs))}</pre>
     <div class="buttons"><button class="button primary" data-action="copy-letter">Copy letter</button></div>
     <h2>Packets for the SDOT form</h2>
     ${packets.map((p, i) => `

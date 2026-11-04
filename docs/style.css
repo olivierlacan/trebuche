@@ -102,6 +102,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .facts tr + tr th, .facts tr + tr td { border-top: 1px solid var(--line); }
 .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
 
+.corner-title { margin-top: 14px; font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--fg); }
+/* Marker hit areas are at least 24 px; center the drawing inside. */
+.leaflet-marker-icon.m { display: grid; place-items: center; }
 pre.request {
   white-space: pre-wrap; background: var(--soft); border: 1px solid var(--line); border-radius: 8px;
   padding: 10px; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 260px; overflow: auto;
@@ -141,3 +144,11 @@ pre.request {
 .top { display: flex; align-items: center; gap: 10px; }
 .top-logo { flex: none; display: block; line-height: 0; }
 .top-logo img { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .25)); }
+
+/* Skip link: hidden until focused (WCAG 2.4.1). */
+.skip { position: absolute; left: 8px; top: -60px; z-index: 2000; padding: 10px 14px; border-radius: 8px;
+  background: #f4c542; color: #1d1d1f; font-weight: 600; text-decoration: none; }
+.skip:focus { top: 8px; }
+/* One visible focus ring for everything focusable (WCAG 2.4.7, 2.4.13). */
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto !important; } }

@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="../../style.css">
 </head>
 <body>
+<a class="skip" href="#panel">Skip the map, to the corner details and lists</a>
 <header class="top">
   <a href="../../" class="top-logo" aria-label="Trebuche home"><img src="../../logo.svg" width="36" height="36" alt=""></a>
   <div>
@@ -28,9 +29,10 @@
 </header>
 
 <main class="layout">
-  <div id="map" role="application" aria-label="Map of Dayton Ave N corners and their curb ramps"></div>
+  <div id="map" role="region" aria-label="Map of Dayton Ave N corners and their curb ramps" aria-describedby="map-help"></div>
+  <p id="map-help" hidden>Each corner is a button: press Tab to move between corners and Enter to open one. Every corner is also listed under All corners.</p>
 
-  <aside class="panel">
+  <aside class="panel" id="panel" tabindex="-1">
     <nav class="tabs" role="tablist" aria-label="Panels">
       <button role="tab" id="tab-key" aria-controls="pane-key" data-tab="key">Key</button>
       <button role="tab" id="tab-corner" aria-controls="pane-corner" data-tab="corner">Corner</button>
