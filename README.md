@@ -185,43 +185,54 @@ preview images (`docs/og.png`, `docs/seattle/phinney-ridge/og.png`) are rendered
 
 ## Curb ramp designs
 
-`docs/seattle/curb-ramps/` illustrates every curb ramp design in Seattle's 2026 Standard
-Plans, in the logo's style: 422A (with wings, and with side curbs), 422B, 422C, 422D,
-422E, 422F, 422G and 422H. Each card says when the city uses the design, lists its key
-dimensions, and links to its plan sheet (and to AR for the three designs modeled there).
+Seattle's 2026 Standard Plans have eight curb ramp types (422a–422h), most drawn more than
+one way. Trebuche treats each drawing as a design, 14 in all:
 
-`ruby scripts/catalog.rb` draws the illustrations (`docs/seattle/curb-ramps/<type>.svg`,
-standard library only; pass type IDs to redraw just those). They're to scale in plan, from
-each sheet's dimensions, with the curb drawn about 2.6 times its real height as in the logo.
-Corner designs use a curb radius that fits each one (12 ft for 422C, 16 ft for 422F,
-20 ft for 422G, 30 ft for the directional ramps). Broom finishes follow each sheet:
-parallel to the curb on 422A, perpendicular or radial on 422B, 422C and 422G.
+| Type | Designs (ID) |
+|---|---|
+| 422A perpendicular | with wings (`422a`), with side curbs across a planting strip (`422a-side-curbs`), two ramps radial to a curved corner, from the sheet's location inset (`422a-radius`) |
+| 422B parallel | sidewalk at the curb (`422b`), behind a planting strip (`422b-strip`) |
+| 422C parallel at the corner | curved landing (`422c`), square landing (`422c-square`) |
+| 422D directional | with wings (`422d`), with side curbs where the sidewalk runs into the curve (`422d-side-curbs`) |
+| 422E directional, set back | with wings (`422e`), with side curbs (`422e-side-curbs`) |
+| 422F shared diagonal, 422G blended transition, 422H island cut-through | `422f`, `422g`, `422h` |
+
+Not included: 456b (temporary ramps for construction detours) and 433 (a waste access
+ramp, not for pedestrians).
+
+`scripts/ramp_designs.rb` describes every design once: plan geometry in feet (surfaces in
+drawing order, curb faces and walls, warning panels, joints, clear areas, crosswalks) and
+the words for it (when the city uses it, key dimensions, plan sheet, and a caveat for
+corner designs, which are drawn on one curb radius each: 12 ft for 422C, 15 ft for the
+square 422C, 16 ft for 422F, 20 ft for 422G, 25 ft for the curved 422A, 30 ft for 422D/E).
+Two scripts read it:
+
+- `ruby scripts/catalog.rb` draws the illustrations, `docs/seattle/curb-ramps/<id>.svg`, in
+  the logo's style. They're to scale in plan, with the curb drawn about 2.6 times its real
+  height as in the logo, and broom finishes in the direction each sheet gives. It also
+  writes the catalog page (`docs/seattle/curb-ramps/index.html`, from
+  `templates/curb-ramps/index.html.erb`) and `docs/ar/designs.js` for the AR page. Pass IDs
+  to redraw just those illustrations.
+- `ruby scripts/ramp_model.rb` builds the 3D models (below).
 
 ## Curb ramp in AR
 
-`docs/ar/` shows true-scale City of Seattle curb ramps that neighbors can place at a corner
-with their phone, as a rough check of what fits (poles, hydrants, drains, planting strips).
+`docs/ar/` shows any of the 14 designs at true scale, for neighbors to place at a corner
+with their phone as a rough check of what fits (poles, hydrants, drains, planting strips).
 It uses Google's open-source [`<model-viewer>`](https://modelviewer.dev/): Chrome's AR on
 Android, AR Quick Look on iPhone and iPad, and a 3D view everywhere else. Scale is locked
-to true size.
+to true size. People pick a type (with its illustration as the thumbnail), then a
+version; `?type=<id>` opens a design directly, so older links (`422a`, `422a-side-curbs`,
+`422b`) still work. Corner designs show their curb radius caveat.
 
-People pick one of three designs from the 2026 Standard Plans, all sized for Seattle's
-6 in curb:
-
-| Design | File | When | Model |
-|---|---|---|---|
-| 422A with wings | `ramp-422a.glb` | Sidewalk reaches the curb | 5 ft ramp rising over a 6 ft run (8.3%), 5 ft wings at 10%, 4 ft landing, 4 × 4 ft clear area |
-| 422A with side curbs | `ramp-422a-side-curbs.glb` | Ramp crosses a planting strip | Same run between 6 in side curbs and grass, landing on a 6 ft sidewalk, 5 × 4 ft clear area |
-| 422B parallel | `ramp-422b.glb` | Sidewalk too narrow for a ramp and landing | Two 6 ft wide runs along the curb down to a 5 ft landing at street level, 4 ft of level sidewalk past each, 6 in back curb |
-
-Each has a 2 ft yellow warning panel with truncated domes at their real size and spacing
-(422k) and through joints. `?type=422a-side-curbs` (or `422b`) opens a design directly.
-The page also lists Seattle's other designs (422C–422H) and why they aren't in AR: they
-wrap around the curb radius, which differs at every corner.
-
-`ruby scripts/ramp_model.rb` writes the models (binary glTF, in meters, standard library
-only). `--check` prints the dimensions measured from each mesh. The files pass the Khronos
-glTF validator with no issues.
+`ruby scripts/ramp_model.rb` writes `docs/ar/ramp-<id>.glb` (binary glTF, in meters,
+standard library only). The designs are described the way they're drawn, later surfaces
+on top, so the script cuts each surface wherever a later one covers it in plan, adds the
+vertical faces (curb faces, side and back curbs, the slab's cut edges), and puts truncated
+domes at their real size and spacing (422k) on every warning panel. Streets and
+crosswalks are left out: in AR, the real street is the floor. `--check` prints each
+model's footprint and dome count. Every file passes the Khronos glTF validator with no
+issues.
 
 Corners that need a ramp link to it from the map (`ar/?corner=61-NE` names the corner and
 links back). The page tells people to stay on the sidewalk, and says plainly that it's a

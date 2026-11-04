@@ -1,131 +1,31 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Draws the curb ramp design catalog: one illustration per City of Seattle curb
-# ramp type, in the style of the logo (scripts/logo.rb): seen from above at a
-# slight angle, warm concrete, yellow truncated-dome panels, recessed joints,
-# ladder crosswalks, grass, and a fine grain.
+# Draws the curb ramp design catalog from scripts/ramp_designs.rb: one
+# illustration per design, in the style of the logo (scripts/logo.rb), seen
+# from above at a slight angle, with warm concrete, yellow truncated-dome
+# panels, recessed joints, broom finishes, ladder crosswalks and a fine grain.
+# Every drawing is to scale in plan; like the logo, the curb is drawn about 2.6
+# times taller than it is so the 6" curb reads at small sizes.
 #
-# Every drawing is to scale in plan (feet), from the 2026 City of Seattle
-# Standard Plans for Municipal Construction. Like the logo, curb height is drawn
-# about 2.6 times taller than it is so the 6" curb reads at small sizes.
-#   420   sidewalk scoring in 2' squares
-#   422a  perpendicular ramp: 5'-0" wide, 8.3% (6'-0" run for a 6" curb), wings at
-#         10%, 4'-0" landing, 4'-0" clear area; side curbs instead of wings across
-#         a planting strip (ramp 5'-0" min)
-#   422b  parallel ramp: 6'-0" wide runs at 8.3%, 5'-0" lower landing at street
-#         level, 4'-0" of full-width sidewalk at the top of each run, back curb
-#   422c  parallel ramps at the corner: the lower landing wraps the curb return,
-#         back curb behind it, warning panels (radial tile) at each crossing
-#   422d  directional ramp: run parallel to the crosswalk, bottom 5'-0" or less
-#         from the curb, warning panel at the bottom of the run, 4'-0" clear area
-#   422e  directional ramp set back more than 5'-0": warning panel moves to the
-#         back of curb (radial tile)
-#   422f  shared diagonal ramp: at the apex, warning panel within 8" of the curb,
-#         5'-0" x 4'-0" clear area inside the lines of both curbs extended
-#   422g  blended transition: the corner slopes at 5% max down to the street,
-#         radial warning panel along the whole curb, level bypass behind
-#   422h  island cut-through: street-level path through an island, two 2'-0"
-#         warning panels at least 2'-0" apart, 5'-0" wide
-#   422k  warning panels 2'-0" deep, Federal Safety Yellow; side/back curbs 6" wide
-#   712   ladder crosswalk: pairs of 8" bars with an 8" gap, 10' long, 5' apart
+# Also writes the catalog page (from templates/curb-ramps/index.html.erb) and
+# docs/ar/designs.js, the list of designs the AR page offers.
 #
-#   ruby scripts/catalog.rb    # writes docs/seattle/curb-ramps/<type>.svg
+#   ruby scripts/catalog.rb              # everything
+#   ruby scripts/catalog.rb 422g 422h    # just these illustrations (and the pages)
+
+require "erb"
+require "json"
+require_relative "ramp_designs"
 
 ROOT = File.expand_path("..", __dir__)
 OUT = File.join(ROOT, "docs/seattle/curb-ramps")
 
-CH   = 0.5    # 6" curb, in feet
 LIFT = 2.6    # drawn height exaggeration (the logo draws its curb about 3x)
 K    = 0.68   # foreshortening of depth, as in the logo
 VW, VH = 160.0, 100.0
 
-def add(a, b) = a.zip(b).map { _1 + _2 }
-def sub(a, b) = a.zip(b).map { _1 - _2 }
-def mul(a, s) = a.map { _1 * s }
-def dist(a, b) = Math.hypot(a[0] - b[0], a[1] - b[1])
-def unit(a) = mul(a, 1 / Math.hypot(*a))
 def f2(v) = format("%.2f", v)
-
-# A curb line in plan, walked from the bottom street (left) toward the right
-# street, so the sidewalk is always on the left. Heights along it are 6" except
-# where a ramp lowers it.
-class Curb
-  attr_reader :pts
-
-  def initialize(pts)
-    @pts = pts
-    @cum = [0.0]
-    pts.each_cons(2) { |a, b| @cum << @cum.last + dist(a, b) }
-    @dips = []
-  end
-
-  def self.straight = new([[-200.0, 0.0], [200.0, 0.0]])
-
-  # Straight curb along z = 0, a radius-r return, then straight along x = 0.
-  def self.corner(r)
-    arc = (0..90).step(2).map { |deg| a = (deg - 90) * Math::PI / 180; [-r + r * Math.cos(a), r + r * Math.sin(a)] }
-    new([[-200.0, 0.0]] + arc + [[0.0, 200.0]])
-  end
-
-  def length = @cum.last
-
-  def at(s)
-    s = s.clamp(0, length)
-    i = (@cum.bsearch_index { _1 > s } || @cum.size - 1) - 1
-    i = i.clamp(0, @pts.size - 2)
-    seg = @cum[i + 1] - @cum[i]
-    t = seg.zero? ? 0 : (s - @cum[i]) / seg
-    add(@pts[i], mul(sub(@pts[i + 1], @pts[i]), t))
-  end
-
-  # Unit vector pointing into the sidewalk at s.
-  def inward(s)
-    a, b = at(s - 0.05), at(s + 0.05)
-    t = unit(sub(b, a))
-    [-t[1], t[0]]
-  end
-
-  # Arc length where the ray o + t*d (t >= 0) first meets the curb.
-  def hit(o, d)
-    best = nil
-    @pts.each_cons(2).with_index do |(a, b), i|
-      e = sub(b, a)
-      den = d[0] * e[1] - d[1] * e[0]
-      next if den.abs < 1e-12
-
-      w = sub(a, o)
-      t = (w[0] * e[1] - w[1] * e[0]) / den
-      u = (w[0] * d[1] - w[1] * d[0]) / den
-      next unless t >= -1e-6 && u >= -1e-9 && u <= 1 + 1e-9
-
-      best = [t, @cum[i] + u * (@cum[i + 1] - @cum[i])] if best.nil? || t < best[0]
-    end
-    best&.last or raise "ray misses the curb"
-  end
-
-  # Flush with the street from s = a to b, rising back to 6" over la before and lb after.
-  def dip(a, b, la, lb) = @dips << [[a, b].min, [a, b].max, la, lb]
-
-  def h(s)
-    @dips.map do |a, b, la, lb|
-      if s < a then la.positive? && s > a - la ? CH * (a - s) / la : CH
-      elsif s <= b then 0.0
-      else lb.positive? && s < b + lb ? CH * (s - b) / lb : CH
-      end
-    end.push(CH).min
-  end
-
-  # Points [x, z, h] along the curb from s0 to s1 (either direction).
-  def walk(s0, s1, step = 0.4, height: nil)
-    n = [((s1 - s0).abs / step).ceil, 1].max
-    (0..n).map do |i|
-      s = s0 + (s1 - s0) * i / n
-      p = at(s)
-      [p[0], p[1], height || h(s)]
-    end
-  end
-end
 
 class Art
   CONCRETE = "url(#top)"
@@ -199,6 +99,11 @@ class Art
 
   # A face of a side or back curb (vertical, from the lower surface up to 6").
   def face(pts) = fill(pts, "#b9af99")
+
+  # The lit back edge of a sidewalk, or the street-side edge of an island.
+  def rim(a, b, bright: false)
+    @o << %(<path d="#{path([a, b], close: false)}" stroke="#fffdf6" stroke-opacity="#{bright ? 1 : 0.7}" stroke-width="#{f2(@s * (bright ? 0.14 : 0.1))}"/>)
+  end
 
   # Recessed joint: dark groove with a light lower lip.
   def joint(*pts, op: 0.75)
@@ -298,288 +203,64 @@ class Art
   end
 end
 
-# The scoring grid is drawn after everything, so ramps must not be in @flat:
-# Art#concrete is only for level sidewalk at curb height.
 
-# ------------------------------------------------------------------ ramps
-
-# A perpendicular or directional ramp. `bc` is the middle of its lower grade
-# break, `d` points up the run. Wings slope from the top of the run down to the
-# curb, `wings` feet along the curb on each side. `warn` places the 2' panel:
-# :ramp (on the run, at the curb), :bottom (at the foot of the run, on the
-# flush area), :curb (along the back of curb, radial tile).
-def ramp(art, curb, bc, d, w: 5.0, run: 6.0, landing: 4.0, wings: [5.0, 5.0], warn: :ramp, clear: [4.0, 4.0])
-  n = [d[1], -d[0]]
-  bl, br = add(bc, mul(n, -w / 2)), add(bc, mul(n, w / 2))
-  tl, tr = add(bl, mul(d, run)), add(br, mul(d, run))
-  ll, lr = add(tl, mul(d, landing)), add(tr, mul(d, landing))
-  back = mul(d, -1)
-  sl, sr = curb.hit(bl, back), curb.hit(br, back)
-  setback = dist(bl, curb.at(sl))
-  curb.dip(sl, sr, wings[0], wings[1])
-
-  e = ->(p, h) { [p[0], p[1], h] }
-  art.surface(curb.walk(sl, sr, 0.3, height: 0) + [e[br, 0], e[bl, 0]]) if setback > 0.05 || dist(br, curb.at(sr)) > 0.05
-  art.surface([e[bl, 0], e[br, 0], e[tr, CH], e[tl, CH]])
-  art.surface([e[tl, CH]] + curb.walk(sl - wings[0], sl) + [e[bl, 0]])
-  art.surface([e[tr, CH], e[br, 0]] + curb.walk(sr, sr + wings[1]))
-  art.fill([e[tl, CH], e[tr, CH], e[lr, CH], e[ll, CH]], Art::CONCRETE)
-  art.brush((1..(run / 0.35).floor - 1).map { |i| v = i * 0.35; [e[add(bl, mul(d, v)), CH * v / run], e[add(br, mul(d, v)), CH * v / run]] })
-
-  # clear area: from the lower grade break, toward the street
-  if clear
-    cw, cd = clear[0] / 2, clear[1]
-    art.clear_area([mul(n, -cw), mul(n, cw), add(mul(n, cw), mul(back, cd)), add(mul(n, -cw), mul(back, cd))]
-                     .map { e[add(bc, _1), 0] })
+# Draws a design's scene, in order.
+def illustrate(design)
+  view_c, view_s = design[:view]
+  art = Art.new(center: view_c, scale: view_s, label: "Type #{design[:id].upcase.sub(/-.*/, '')}: #{design[:name]}")
+  design_scene(design).ops.each do |kind, args, kw, blk|
+    case kind
+    when :surface
+      pts = args[0]
+      case kw[:kind]
+      when :grass then art.grass(pts)
+      when :walk then art.concrete(pts)
+      when :landing then art.fill(pts, Art::CONCRETE)
+      when :curbtop then art.fill(pts, "#d8d0bd", kw[:seam] ? %( stroke="#d8d0bd" stroke-width="0.35") : "")
+      when :flush then art.surface(pts, "#d9d2c1", seam: kw[:seam])
+      else art.surface(pts, Art::RAMP, seam: kw[:seam])
+      end
+    when :wall then art.face(args[0])
+    when :curb then art.curb_faces(args[0])
+    when :edge then art.curb_edge(args[0])
+    when :street then art.street
+    when :crosswalk then art.crosswalk(*args, **kw)
+    when :clear then art.clear_area(args[0])
+    when :warning then art.warning(*args, &blk)
+    when :joint then art.joint(*args, **kw)
+    when :brush then art.brush(args[0])
+    when :faint then art.faint(*args)
+    when :rim then art.rim(*args, **kw)
+    else raise "unknown op #{kind}"
+    end
   end
-
-  case warn
-  when :ramp
-    art.warning(w) { |u, v| p = add(add(bl, mul(n, u)), mul(d, v)); e[p, CH * v / run] }
-  when :bottom
-    art.warning(w) { |u, v| p = add(add(bl, mul(n, u)), mul(d, v - 2.0)); e[p, 0] }
-  when :curb
-    art.warning(sr - sl) { |u, v| s = sl + u; p = add(curb.at(s), mul(curb.inward(s), v + 0.1)); e[p, 0] }
-  end
-
-  ws = curb.at(sl - wings[0])
-  we = curb.at(sr + wings[1])
-  art.joint(e[ws, CH], e[tl, CH], e[tr, CH], e[we, CH])
-  art.joint(e[tl, CH], e[ll, CH], e[lr, CH], e[tr, CH])
-end
-
-# ------------------------------------------------------------------ scenes
-
-# Ground for a straight curb along z = 0: sidewalk to `walk` feet (or a planting
-# strip first), then grass.
-def straight_ground(art, curb, strip: 0.0, walk: 12.0)
-  art.street
-  yield if block_given?
-  art.curb_faces(curb)
-  art.grass([[-80, 0, CH], [80, 0, CH], [80, 80, CH], [-80, 80, CH]])
-  art.concrete([[-80, strip, CH], [80, strip, CH], [80, strip + walk, CH], [-80, strip + walk, CH]])
-  art.raw(%(<path d="#{art.path([[-80, strip + walk, CH], [80, strip + walk, CH]], close: false)}" stroke="#fffdf6" stroke-opacity="0.7" stroke-width="#{f2(art.s * 0.1)}"/>))
-end
-
-def scene_422a
-  art = Art.new(center: [0, 5.5], scale: 4.6, label: "Type 422A perpendicular curb ramp with wings")
-  curb = Curb.straight
-  # wings change the curb before it's drawn, so measure them first
-  curb.dip(curb.hit([-2.5, 0], [0, -1]), curb.hit([2.5, 0], [0, -1]), 5, 5)
-  straight_ground(art, curb, walk: 10.0) { art.crosswalk([0, 0], [1, 0], [0, -1]) }
-  [-11.5, 11.5].each { |x| art.joint([x, 0, CH], [x, 10, CH], op: 0.5) } # contraction joints
-  ramp(art, curb, [0, 0], [0, 1], clear: [4.0, 4.0])
-  art.curb_edge(curb)
   art
 end
 
-def scene_422a_side
-  art = Art.new(center: [0, 5.5], scale: 4.6, label: "Type 422A perpendicular curb ramp with side curbs")
-  curb = Curb.straight
-  hw, sc, run = 2.5, 0.5, 6.0
-  curb.dip(curb.hit([-hw, 0], [0, -1]), curb.hit([hw, 0], [0, -1]), 0, 0)
-  straight_ground(art, curb, strip: run, walk: 6.0) do
-    art.crosswalk([0, 0], [1, 0], [0, -1])
-    art.clear_area([[-hw, 0, 0], [hw, 0, 0], [hw, -4, 0], [-hw, -4, 0]])
-  end
-  art.joint([-80, run, CH], [-hw - sc, run, CH], op: 0.55)
-  art.joint([hw + sc, run, CH], [80, run, CH], op: 0.55)
-  art.surface([[-hw, 0, 0], [hw, 0, 0], [hw, run, CH], [-hw, run, CH]])
-  art.brush((1..16).map { |i| v = i * 0.35; [[-hw, v, CH * v / run], [hw, v, CH * v / run]] })
-  art.face([[-hw, 0, 0], [-hw, 0, CH], [-hw, run, CH]]) # inner face of each side curb
-  [-1, 1].each do |sx|
-    a, b = sx * hw, sx * (hw + sc)
-    art.face([[a, 0, 0], [b, 0, 0], [b, 0, CH], [a, 0, CH]])
-    art.fill([[a, 0, CH], [b, 0, CH], [b, run, CH], [a, run, CH]], "#d8d0bd")
-  end
-  art.fill([[-hw, run, CH], [hw, run, CH], [hw, run + 4, CH], [-hw, run + 4, CH]], Art::CONCRETE)
-  art.warning(2 * hw) { |u, v| [-hw + u, v, CH * v / run] }
-  art.joint([-hw, run, CH], [hw, run, CH])
-  art.joint([-hw, run, CH], [-hw, run + 4, CH], [hw, run + 4, CH], [hw, run, CH])
-  art.curb_edge(curb)
-  art
-end
-
-def scene_422b
-  art = Art.new(center: [0, 4.5], scale: 4.4, label: "Type 422B parallel curb ramp")
-  curb = Curb.straight
-  lw, run, wd = 2.5, 6.0, 6.0
-  curb.dip(curb.hit([-lw, 0], [0, -1]), curb.hit([lw, 0], [0, -1]), run, run)
-  straight_ground(art, curb, walk: wd) { art.crosswalk([0, 0], [1, 0], [0, -1]) }
-  art.fill([[-80, wd, CH], [80, wd, CH], [80, wd + 0.5, CH], [-80, wd + 0.5, CH]], "#d8d0bd") # back curb
-  art.surface([[-lw, 0, 0], [lw, 0, 0], [lw, wd, 0], [-lw, wd, 0]])
-  [-1, 1].each do |sx|
-    a, b = sx * lw, sx * (lw + run)
-    art.surface([[a, 0, 0], [b, 0, CH], [b, wd, CH], [a, wd, 0]])
-    art.brush((1..16).map { |i| x = a + sx * i * 0.35; h = CH * i * 0.35 / run; [[x, 0, h], [x, wd, h]] })
-    art.face([[a, wd, 0], [b, wd, CH], [a, wd, CH]])
-  end
-  art.face([[-lw, wd, 0], [lw, wd, 0], [lw, wd, CH], [-lw, wd, CH]])
-  art.warning(2 * lw) { |u, v| [-lw + u, v, 0] }
-  [lw, lw + run].each do |x|
-    h = x == lw ? 0 : CH
-    art.joint([-x, 0, h], [-x, wd, h])
-    art.joint([x, 0, h], [x, wd, h])
-  end
-  art.curb_edge(curb)
-  art
-end
-
-# Ground for a corner: bottom street (z < 0), right street (x > 0), a curb return
-# of radius r, sidewalks `walk` wide behind `strip` feet of planting strip, and
-# the paved corner reaching back to `inner` (a point behind the return).
-def corner_ground(art, curb, r, strip: 5.0, walk: 7.0, inner: nil)
-  art.street
-  yield if block_given?
-  art.curb_faces(curb)
-  big = 200
-  art.grass(curb.walk(0, curb.length, 1.0, height: CH) + [[-big, big, CH]])
-  back = strip + walk
-  inner ||= [-back, back]
-  arc = curb.walk(curb.hit([-r, 1], [0, -1]), curb.hit([-1, r], [1, 0]), 0.5, height: CH)
-  art.concrete(arc + [[0, r, CH], [-back, r, CH], [inner[0], inner[1], CH], [-r, back, CH], [-r, 0, CH]])
-  art.concrete([[-big, strip, CH], [-r + 0.01, strip, CH], [-r + 0.01, back, CH], [-big, back, CH]])
-  art.concrete([[-back, r - 0.01, CH], [-strip, r - 0.01, CH], [-strip, big, CH], [-back, big, CH]])
-end
-
-def scene_422c
-  r, wd, run = 12.0, 6.0, 6.0
-  art = Art.new(center: [-8, 8], scale: 3.5, label: "Type 422C parallel curb ramps at the corner")
-  curb = Curb.corner(r)
-  s0, s1 = curb.hit([-r, 1], [0, -1]), curb.hit([-1, r], [1, 0])
-  curb.dip(s0, s1, run, run)
-  c = [-r, r]
-  ring = ->(rad, h) { (0..45).map { a = (2 * _1 - 90) * Math::PI / 180; [c[0] + rad * Math.cos(a), c[1] + rad * Math.sin(a), h] } }
-  corner_ground(art, curb, r, strip: 0, walk: wd) do
-    art.crosswalk([-r + 3, 0], [1, 0], [0, -1])
-    art.crosswalk([0, r - 3], [0, 1], [1, 0])
-  end
-  # landscape behind the back curb, inside the return
-  art.grass(ring.(r - wd - 0.5, CH) + [[-r, r, CH]])
-  art.surface(ring.(r, 0) + ring.(r - wd, 0).reverse)
-  art.face(ring.(r - wd, 0) + ring.(r - wd, CH).reverse)
-  art.fill(ring.(r - wd, CH) + ring.(r - wd - 0.5, CH).reverse, "#d8d0bd")
-  # runs along each street, rising away from the corner
-  art.surface([[-r, 0, 0], [-r, wd, 0], [-r - run, wd, CH], [-r - run, 0, CH]])
-  art.brush((1..16).map { |i| x = -r - i * 0.35; h = CH * i * 0.35 / run; [[x, 0, h], [x, wd, h]] })
-  art.face([[-r, wd, 0], [-r - run, wd, CH], [-r, wd, CH]])
-  art.fill([[-r - run, wd, CH], [-r, wd, CH], [-r, wd + 0.5, CH], [-r - run, wd + 0.5, CH]], "#d8d0bd")
-  art.surface([[0, r, 0], [0, r + run, CH], [-wd, r + run, CH], [-wd, r, 0]])
-  art.brush((1..16).map { |i| z = r + i * 0.35; h = CH * i * 0.35 / run; [[0, z, h], [-wd, z, h]] })
-  [[-r + 3, 20], [-20, r - 3]].each do |p|
-    sm = curb.hit(p, p[0] == -20 ? [1, 0] : [0, -1])
-    art.warning(5.0) { |u, v| s = sm - 2.5 + u; q = add(curb.at(s), mul(curb.inward(s), v + 0.1)); [q[0], q[1], 0] }
-  end
-  art.joint([-r, 0, 0], [-r, wd, 0])
-  art.joint([-r - run, 0, CH], [-r - run, wd, CH])
-  art.joint([0, r, 0], [-wd, r, 0])
-  art.joint([0, r + run, CH], [-wd, r + run, CH])
-  art.curb_edge(curb)
-  art
-end
-
-def directional(type)
-  r = 30.0
-  art = Art.new(center: [-13, 10], scale: 3.3,
-                label: "Type #{type.upcase} directional curb ramp#{' set back from the curb' if type == '422e'}")
-  curb = Curb.corner(r)
-  x = -12.0
-  zc = curb.at(curb.hit([x, 40], [0, -1]))[1]
-  zb = type == "422d" ? zc + 4.1 : zc + 6.0
-  bc = [x, zb]
-  # lower the curb before it's drawn (ramp() lowers it again, to the same heights)
-  curb.dip(curb.hit([x - 2.5, zb], [0, -1]), curb.hit([x + 2.5, zb], [0, -1]), 5.0, 6.0)
-  corner_ground(art, curb, r, inner: [-18, 18]) { art.crosswalk([x, 0], [1, 0], [0, -1]) }
-  ramp(art, curb, bc, [0, 1], wings: [5.0, 6.0], warn: type == "422d" ? :bottom : :curb, clear: [5.0, 4.0])
-  art.curb_edge(curb)
-  art
-end
-
-def scene_422f
-  r = 16.0
-  art = Art.new(center: [-7, 6.5], scale: 3.9, label: "Type 422F shared diagonal curb ramp")
-  curb = Curb.corner(r)
-  a = 45 * Math::PI / 180
-  apex = [-r + r * Math.cos(-a), r + r * Math.sin(-a)]
-  d = unit([-1, 1])
-  bc = add(apex, mul(d, 0.25))
-  n = [d[1], -d[0]]
-  curb.dip(curb.hit(add(bc, mul(n, -2.5)), mul(d, -1)), curb.hit(add(bc, mul(n, 2.5)), mul(d, -1)), 6.0, 6.0)
-  corner_ground(art, curb, r) do
-    art.crosswalk([apex[0], 0], [1, 0], [0, -1])
-    art.crosswalk([0, apex[1]], [0, 1], [1, 0])
-    art.faint([0, -1, 0], [0, -40, 0]) # face of curb extended
-    art.faint([1, 0, 0], [40, 0, 0])
-  end
-  ramp(art, curb, bc, d, wings: [6.0, 6.0], warn: :ramp, clear: [5.0, 4.0])
-  art.curb_edge(curb)
-  art
-end
-
-def scene_422g
-  r, band = 20.0, 10.0 # 6" at 5% max
-  art = Art.new(center: [-10, 9], scale: 3.4, label: "Type 422G blended transition")
-  curb = Curb.corner(r)
-  s0, s1 = curb.hit([-r, 1], [0, -1]), curb.hit([-1, r], [1, 0])
-  curb.dip(s0, s1, 5.0, 5.0)
-  c = [-r, r]
-  ring = ->(rad, h) { (0..45).map { a = (2 * _1 - 90) * Math::PI / 180; [c[0] + rad * Math.cos(a), c[1] + rad * Math.sin(a), h] } }
-  corner_ground(art, curb, r, inner: [-18, 18]) do
-    art.crosswalk([-r + 8, 0], [1, 0], [0, -1])
-    art.crosswalk([0, r - 8], [0, 1], [1, 0])
-  end
-  outer, inner = ring.(r, 0), ring.(r - band, CH)
-  45.times { |i| art.surface([outer[i], outer[i + 1], inner[i + 1], inner[i]], seam: true) }
-  art.brush((0..45).map { [outer[_1], inner[_1]] })
-  art.surface([[-r, 0, 0], [-r, band, CH], [-r - 5, 0, CH]])
-  art.surface([[0, r, 0], [0, r + 5, CH], [-band, r, CH]])
-  art.warning(s1 - s0) { |u, v| s = s0 + u; q = add(curb.at(s), mul(curb.inward(s), v + 0.1)); [q[0], q[1], 0] }
-  art.joint([-r - 5, 0, CH], *inner, [0, r + 5, CH])
-  art.curb_edge(curb)
-  art
-end
-
-def scene_422h
-  art = Art.new(center: [0, 1], scale: 4.4, label: "Type 422H island cut-through")
-  hw, iz = 2.5, 3.0 # 5' path; 6' island = 2' panel + 2' gap + 2' panel
-  art.street
-  art.crosswalk([0, -iz], [1, 0], [0, -1])
-  art.crosswalk([0, iz], [1, 0], [0, 1], from: 2.0)
-  [-1, 1].each do |sx|
-    a, b = sx * hw, sx * 40
-    art.fill([[a, -iz, 0], [b, -iz, 0], [b, -iz, CH], [a, -iz, CH]], "#a89e88")
-    art.fill([[a, -iz, CH], [b, -iz, CH], [b, iz, CH], [a, iz, CH]], "url(#grass)")
-    art.concrete([[a, -iz, CH], [b, -iz, CH], [b, -iz + 1.0, CH], [a, -iz + 1.0, CH]])
-    art.concrete([[a, iz - 1.0, CH], [b, iz - 1.0, CH], [b, iz, CH], [a, iz, CH]])
-    art.raw(%(<path d="#{art.path([[a, -iz, CH], [b, -iz, CH]], close: false)}" stroke="#fffdf6" stroke-width="#{f2(art.s * 0.14)}"/>))
-    art.face([[a, -iz, 0], [a, iz, 0], [a, iz, CH], [a, -iz, CH]])
-  end
-  art.surface([[-hw, -iz, 0], [hw, -iz, 0], [hw, iz, 0], [-hw, iz, 0]], "#d9d2c1")
-  art.warning(2 * hw) { |u, v| [-hw + u, -iz + v, 0] }
-  art.warning(2 * hw) { |u, v| [-hw + u, iz - 2 + v, 0] }
-  art
-end
-
-SCENES = {
-  "422a" => [:scene_422a, "Type 422A perpendicular curb ramp with wings"],
-  "422a-side-curbs" => [:scene_422a_side, "Type 422A perpendicular curb ramp with side curbs"],
-  "422b" => [:scene_422b, "Type 422B parallel curb ramp"],
-  "422c" => [:scene_422c, "Type 422C parallel curb ramps at the corner"],
-  "422d" => [->() { directional("422d") }, "Type 422D directional curb ramp"],
-  "422e" => [->() { directional("422e") }, "Type 422E directional curb ramp, set back from the curb"],
-  "422f" => [:scene_422f, "Type 422F shared diagonal curb ramp"],
-  "422g" => [:scene_422g, "Type 422G blended transition"],
-  "422h" => [:scene_422h, "Type 422H island cut-through"],
-}.freeze
+def alt_text(d) = "Illustration of a Seattle Type #{d[:id][0, 4].upcase} curb ramp (#{d[:name].downcase}), seen from above"
 
 if $PROGRAM_NAME == __FILE__
   Dir.mkdir(OUT) unless Dir.exist?(OUT)
   only = ARGV.reject { _1.start_with?("-") }
-  SCENES.each do |id, (build, title)|
-    next unless only.empty? || only.include?(id)
+  DESIGNS.each do |d|
+    next unless only.empty? || only.include?(d[:id])
 
-    art = build.is_a?(Proc) ? build.call : send(build)
-    File.write(File.join(OUT, "#{id}.svg"), art.to_svg("#{title}, drawn from the City of Seattle Standard Plans"))
-    puts "wrote docs/seattle/curb-ramps/#{id}.svg"
+    File.write(File.join(OUT, "#{d[:id]}.svg"), illustrate(d).to_svg(alt_text(d)))
+    puts "wrote docs/seattle/curb-ramps/#{d[:id]}.svg"
   end
+
+  # The AR page's list of designs (same words as the catalog).
+  list = DESIGNS.map do |d|
+    { id: d[:id], family: d[:family], code: d[:id][0, 4].upcase, familyName: FAMILIES[d[:family]], name: d[:name],
+      variant: d[:variant], plan: d[:plan], when: d[:when], specs: d[:specs], caveat: caveat(d), alt: alt_text(d) }
+  end
+  File.write(File.join(ROOT, "docs/ar/designs.js"),
+             "// Generated by scripts/catalog.rb from scripts/ramp_designs.rb\nwindow.RAMP_DESIGNS = #{JSON.pretty_generate(list)};\n")
+  puts "wrote docs/ar/designs.js"
+
+  families = DESIGNS.group_by { _1[:family] }
+  template = File.read(File.join(ROOT, "templates/curb-ramps/index.html.erb"), encoding: "UTF-8")
+  html = ERB.new(template, trim_mode: "-").result_with_hash(families: families)
+  File.write(File.join(OUT, "index.html"), html)
+  puts "wrote docs/seattle/curb-ramps/index.html"
 end

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Curb Ramp in AR</title>
-<meta name="description" content="Place a true-scale City of Seattle curb ramp (Type 422A with wings or side curbs, or Type 422B parallel) at a street corner with your phone's camera, as a rough check of what fits.">
+<meta name="description" content="Place any of Seattle's standard curb ramp designs, at true scale, at a street corner with your phone's camera, as a rough check of what fits.">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <meta name="theme-color" content="#1f2a24">
@@ -38,21 +38,23 @@
     .hero.compact .lede { font-size: 16px; }
   }
   main > section.wrap:first-child { margin-top: 20px; }
-  .types { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; border: 0; }
-  .types legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
-  .types label { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px 10px 40px; position: relative; cursor: pointer; }
-  .types input { position: absolute; left: 14px; top: 13px; margin: 0; accent-color: var(--accent); }
-  .types label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-  .types label:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
-  .types strong { display: block; }
-  .types span { color: var(--muted); font-size: 14px; }
-  .when { margin: 0 0 16px; }
-  @media (max-width: 600px) {
-    .types { grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .types label { padding: 30px 6px 8px; text-align: center; font-size: 14px; line-height: 1.25; }
-    .types input { left: 50%; top: 9px; transform: translateX(-50%); }
-    .types span { display: none; }
-  }
+  .picker { margin: 0 0 14px; }
+  .picker-h { font-weight: 600; margin: 0 0 8px; }
+  .fams { display: flex; gap: 10px; min-width: 0; overflow-x: auto; padding: 2px 2px 10px; margin: 0 -2px; scroll-snap-type: x proximity; border: 0; }
+  .fams label { position: relative; flex: 0 0 150px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px 6px 8px; cursor: pointer; font-size: 14px; line-height: 1.25; }
+  .fams img { display: block; width: 100%; height: auto; border-radius: 7px; margin-bottom: 6px; }
+  .fams strong { display: block; font-size: 13px; color: var(--accent); }
+  @media (min-width: 760px) { .fams { display: grid; grid-template-columns: repeat(4, 1fr); overflow: visible; } }
+  .fams input, .vars input { position: absolute; opacity: 0; pointer-events: none; }
+  .fams label:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .fams label:has(input:focus-visible), .vars label:has(input:focus-visible) { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .vars { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; border: 0; }
+  .vars[hidden] { display: none; }
+  .vars label { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 15px; }
+  .vars label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .when { margin: 10px 0 6px; }
+  .caveat { font-size: 14px; color: var(--muted); border-left: 3px solid #f0d37a; padding-left: 10px; margin: 0 0 14px; }
+  .caveat[hidden] { display: none; }
   .catalog { padding-left: 22px; }
   .catalog li { margin: 0 0 8px; }
   .dims { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; padding: 0; list-style: none; }
@@ -78,13 +80,13 @@
 <main>
   <section class="wrap" aria-labelledby="viewer-h">
     <h2 id="viewer-h" class="visually-hidden" style="position:absolute;left:-9999px">3D model</h2>
-    <fieldset class="types" id="types">
-      <legend>Ramp design, from Seattle's standard plans</legend>
-      <label><input type="radio" name="type" value="422a"><strong>422A with wings</strong><span>Sidewalk runs right up to the curb</span></label>
-      <label><input type="radio" name="type" value="422a-side-curbs"><strong>422A with side curbs</strong><span>Ramp crosses a planting strip</span></label>
-      <label><input type="radio" name="type" value="422b"><strong>422B parallel</strong><span>Sidewalk too narrow for a ramp and landing</span></label>
-    </fieldset>
-    <p class="when small" id="when" aria-live="polite"></p>
+    <div class="picker">
+      <p class="picker-h" id="fams-h">Ramp design, from Seattle's standard plans</p>
+      <fieldset class="fams" id="fams" aria-labelledby="fams-h"></fieldset>
+      <fieldset class="vars" id="vars" aria-label="Version" hidden></fieldset>
+      <p class="when small" id="when" aria-live="polite"></p>
+      <p class="caveat" id="caveat" hidden></p>
+    </div>
     <div class="viewer-wrap">
       <model-viewer id="ramp" src="ramp-422a.glb"
         alt="A 3D model of a City of Seattle Type 422A curb ramp with wings."
@@ -105,7 +107,7 @@
       <li><strong>Open AR.</strong> Tap "View at true scale in AR" on a phone. Android uses Chrome's AR, iPhone and iPad use AR Quick Look.</li>
       <li><strong>Let it find the street.</strong> Slowly move the phone so it can detect the pavement.</li>
       <li><strong>Place it at the curb.</strong> The model sits on the street surface. Aim at the street right in front
-        of the curb, where a ramp would meet the street, and tap to place.</li>
+        of the curb, where a ramp would meet the street (or at the middle of the curve, for corner designs), and tap to place.</li>
       <li><strong>Line it up.</strong> Turn it with two fingers until the yellow panel faces the street and the model's
         curb lines up with the real one. The size is locked to true scale.</li>
       <li><strong>Try another design.</strong> If it doesn't fit, close AR, pick another design above and place it again.</li>
@@ -118,17 +120,7 @@
     <h2 id="dims-h">What you're looking at</h2>
     <p class="section-lede" id="dims-lede"></p>
     <ul class="dims" id="dims"></ul>
-    <h2>Seattle's other curb ramp designs</h2>
-    <p>The <a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=209">2026 Standard Plans</a> (422a–422h) also include these. They aren't in AR because each
-      one wraps around the curved curb at the corner, and that curve is different at every corner, so a single
-      model would mislead more than it helps. <a href="../seattle/curb-ramps/">See them all illustrated</a>.</p>
-    <ul class="catalog">
-      <li><strong><a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=211">422C, parallel at the corner</a>:</strong> two parallel runs meeting at a lower landing in the corner, serving both crossings.</li>
-      <li><strong><a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=212">422D</a> and <a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=213">422E, directional</a>:</strong> a run set on the curve and aimed along the crosswalk; 422E is for when the ramp sits more than 5 ft back from the curb.</li>
-      <li><strong><a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=214">422F, shared diagonal</a>:</strong> one ramp at the apex serving both crossings. Seattle allows it only when nothing else can be built: two ramps per corner is the rule.</li>
-      <li><strong><a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=215">422G, blended transition</a>:</strong> the whole corner sidewalk slopes gently (5% at most) down to the street, with a level bypass behind.</li>
-      <li><strong><a href="https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf#page=216">422H, island cut-through</a>:</strong> a street-level path through a traffic or refuge island, not a corner.</li>
-    </ul>
+    <p><a href="../seattle/curb-ramps/">See every design illustrated, side by side →</a></p>
     <h2>Limits</h2>
     <ul>
       <li>This is a rough visual aid, not a design. SDOT engineers pick the ramp type and fit it to each corner.
@@ -136,6 +128,8 @@
       <li>Phone AR is usually accurate to within a few percent, but it can drift, and it assumes flat ground.
         Real streets and sidewalks slope, so the model may float or sink a little.</li>
       <li>Corners usually get two ramps, one per crossing, so you may want to place one for each.</li>
+      <li>Corner designs are modeled on one curb radius each. Real corners curve more or less, so line up the ramp,
+        not the whole curb.</li>
     </ul>
   </section>
 </main>
@@ -149,37 +143,12 @@
 </footer>
 
 <script src="../areas.js"></script>
+<script src="designs.js"></script>
 <script>
   const PDF = "https://www.seattle.gov/documents/Departments/SPU/Construction-Resources/standards-guidelines/specifications-plans/2026-Standard-Plans.pdf";
-  const TYPES = {
-    "422a": {
-      src: "ramp-422a.glb", name: "Type 422A curb ramp with wings", plan: [["422a", 209], ["422k", 218]],
-      when: "The usual perpendicular ramp where the sidewalk reaches the curb. Its sloped wings take up 5 ft of curb on each side.",
-      alt: "A 3D model of a City of Seattle Type 422A curb ramp: a sloped ramp with triangular wings, a yellow warning panel with raised domes at the street, a landing at the top, and the clear area outlined on the street.",
-      dims: [["5 ft wide", "ramp (4 ft is the minimum)"], ["6 ft long", "rising 6 in at 8.3%, the steepest allowed"],
-        ["5 ft wings", "on each side along the curb, at 10%"], ["4 ft landing", "level, at the top, as wide as the ramp"],
-        ["2 ft yellow panel", "truncated domes, about 2⅓ in apart, across the full width"],
-        ["4 × 4 ft clear area", "dashed on the street, which must fall inside the crosswalk"]],
-    },
-    "422a-side-curbs": {
-      src: "ramp-422a-side-curbs.glb", name: "Type 422A curb ramp with side curbs", plan: [["422a", 209], ["422k", 218]],
-      when: "The same perpendicular ramp where it crosses a grass planting strip: short curbs hold the grass back instead of wings, so it needs less room along the curb.",
-      alt: "A 3D model of a City of Seattle Type 422A curb ramp with side curbs: a sloped ramp crossing a grass planting strip between two short curbs, a yellow warning panel with raised domes at the street, a landing on the sidewalk beyond, and the clear area outlined on the street.",
-      dims: [["5 ft wide", "ramp, the minimum with side curbs"], ["6 ft long", "rising 6 in at 8.3%, across the planting strip"],
-        ["6 in side curbs", "level with the grass, holding it back on each side"], ["4 ft landing", "level, on the sidewalk, as wide as the ramp"],
-        ["2 ft yellow panel", "truncated domes, about 2⅓ in apart, across the full width"],
-        ["5 × 4 ft clear area", "dashed on the street, which must fall inside the crosswalk"]],
-    },
-    "422b": {
-      src: "ramp-422b.glb", name: "Type 422B parallel curb ramp", plan: [["422b", 210], ["422k", 218]],
-      when: "Where the sidewalk is too narrow for a ramp and a landing: the sidewalk itself dips along the curb to a landing at street level, then rises again. People walking past go down and up too.",
-      alt: "A 3D model of a City of Seattle Type 422B parallel curb ramp: the sidewalk slopes down along the curb from both sides to a landing at street level with a yellow warning panel at the street edge, with a back curb and grass behind.",
-      dims: [["6 ft wide", "ramps, the full sidewalk width (5 ft is the minimum)"], ["Two 6 ft runs", "along the curb, each dropping 6 in at 8.3%"],
-        ["5 ft landing", "at street level between the runs (the minimum)"], ["4 ft at the top", "of full-width level sidewalk past each run"],
-        ["2 ft yellow panel", "across the landing at the street edge"], ["6 in back curb", "behind the ramps, holding back the landscape"]],
-    },
-  };
-
+  const DESIGNS = window.RAMP_DESIGNS;
+  const byId = Object.fromEntries(DESIGNS.map(d => [d.id, d]));
+  const families = [...new Set(DESIGNS.map(d => d.family))];
   const params = new URLSearchParams(location.search);
   const mv = document.getElementById("ramp");
   let subject = "a street corner";
@@ -200,27 +169,47 @@
     back.innerHTML = `<a class="btn" href="../${area.path}map.html?corner=${encodeURIComponent(id)}">Back to this corner on the map</a>`;
   }
 
+  const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  document.getElementById("fams").innerHTML = families.map(f => {
+    const d = DESIGNS.find(x => x.family === f);
+    return `<label><input type="radio" name="family" value="${f}"><img src="../seattle/curb-ramps/${d.id}.svg" width="160" height="100" alt="">` +
+      `<strong>${d.code}</strong>${esc(d.familyName)}</label>`;
+  }).join("");
+
   function show(key, push) {
-    const t = TYPES[key];
-    if (mv.getAttribute("src") !== t.src) mv.setAttribute("src", t.src);
-    mv.setAttribute("alt", t.alt);
-    document.querySelector(`#types input[value="${key}"]`).checked = true;
+    const t = byId[key];
+    const src = `ramp-${t.id}.glb`;
+    if (mv.getAttribute("src") !== src) mv.setAttribute("src", src);
+    mv.setAttribute("alt", `A true-scale 3D model of a City of Seattle Type ${t.code} curb ramp: ${t.name.toLowerCase()}.`);
+    const fam = document.querySelector(`#fams input[value="${t.family}"]`);
+    fam.checked = true;
+    const sib = DESIGNS.filter(d => d.family === t.family);
+    const vars = document.getElementById("vars");
+    vars.hidden = sib.length < 2;
+    vars.innerHTML = sib.length < 2 ? "" : sib.map(d =>
+      `<label><input type="radio" name="variant" value="${d.id}"${d.id === t.id ? " checked" : ""}>${esc(d.variant)}</label>`).join("");
     document.getElementById("when").textContent = t.when;
+    const cav = document.getElementById("caveat");
+    cav.hidden = !t.caveat;
+    cav.textContent = t.caveat || "";
     if (m) document.getElementById("lede").textContent =
-      `A true-scale City of Seattle ${t.name} to place at ${subject}, to check roughly what would fit.`;
-    const links = t.plan.map(([p, pg]) => `<a href="${PDF}#page=${pg}">Standard Plan ${p}</a>`).join(" and ");
+      `A true-scale City of Seattle Type ${t.code} curb ramp (${t.name.toLowerCase()}) to place at ${subject}, to check roughly what would fit.`;
     document.getElementById("dims-lede").innerHTML =
-      `A ${t.name} built to Seattle's ${links} (2026 edition), for Seattle's standard 6 inch curb.`;
+      `A Type ${t.code} ${esc(t.name.toLowerCase())}, built to Seattle's <a href="${PDF}#page=${t.plan}">Standard Plan ${t.family}</a> ` +
+      `and <a href="${PDF}#page=218">422k</a> (2026 edition), for Seattle's standard 6 inch curb.`;
     document.getElementById("dims").innerHTML =
-      t.dims.map(([a, b]) => `<li><strong>${a}</strong><span>${b}</span></li>`).join("");
+      t.specs.map(([a, b]) => `<li><strong>${esc(a)}</strong><span>${esc(b)}</span></li>`).join("");
     if (push) {
       params.set("type", key);
       history.replaceState(null, "", `?${params}`);
     }
   }
 
-  show(TYPES[params.get("type")] ? params.get("type") : "422a", false);
-  document.getElementById("types").addEventListener("change", (e) => show(e.target.value, true));
+  show(byId[params.get("type")] ? params.get("type") : "422a", false);
+  document.getElementById("fams").addEventListener("change", (e) => show(DESIGNS.find(d => d.family === e.target.value).id, true));
+  document.getElementById("vars").addEventListener("change", (e) => show(e.target.value, true));
+  const picked = document.querySelector("#fams input:checked")?.closest("label");
+  if (picked) document.getElementById("fams").scrollLeft = picked.offsetLeft - 8; // without scrolling the page
   mv.addEventListener("load", () => { if (!mv.canActivateAR) document.getElementById("no-ar").hidden = false; });
 </script>
 </body>
