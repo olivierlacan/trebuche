@@ -39,13 +39,33 @@ for (const [lat, lon, st, sw] of H.points) {
   cells.set(k, (cells.get(k) || 0) + 1);
 }
 const maxCell = Math.max(...cells.values());
-const cellColor = n => {
-  const t = Math.min(1, (n - 1) / (maxCell - 1 || 1));
-  // pale yellow -> orange -> deep red
-  const stops = [[255, 230, 140], [240, 140, 40], [150, 20, 30]];
-  const [a, b, u] = t < 0.5 ? [stops[0], stops[1], t * 2] : [stops[1], stops[2], (t - 0.5) * 2];
-  return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * u)).join(",")})`;
+// One color scale for everything on this page: squares, hotspot markers, cards and the legend.
+// pale yellow -> orange -> deep red, by no-ramp intersections in a square.
+const STOPS = [[255, 230, 140], [240, 140, 40], [150, 20, 30]];
+const cellRgb = n => {
+  const t = Math.min(1, Math.max(0, (n - 1) / (maxCell - 1 || 1)));
+  const [a, b, u] = t < 0.5 ? [STOPS[0], STOPS[1], t * 2] : [STOPS[1], STOPS[2], (t - 0.5) * 2];
+  return a.map((v, i) => Math.round(v + (b[i] - v) * u));
 };
+const cellColor = n => `rgb(${cellRgb(n).join(",")})`;
+// Dark or white text, whichever reads better on that color.
+const inkOn = n => {
+  const lum = cellRgb(n).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+    .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  return (lum + 0.05) / 0.05 > 1.05 / (lum + 0.05) ? "#1d1d1f" : "#fff";
+};
+// A hotspot's color is its darkest square, so the marker matches the shading under it.
+const peakOf = s => {
+  const [[s0, w0], [n0, e0]] = s.bounds;
+  let peak = 0;
+  for (let i = Math.round(s0 / CLAT); i < Math.round(n0 / CLAT); i++)
+    for (let j = Math.round(w0 / CLON); j < Math.round(e0 / CLON); j++) peak = Math.max(peak, cells.get(`${i},${j}`) || 0);
+  return peak || H.hot_min;
+};
+H.hotspots.forEach(s => { s.peak = peakOf(s); });
+const maxSpot = Math.max(...H.hotspots.map(s => s.no_ramp));
+// Bigger marker for more no-ramp intersections in the whole hotspot (area grows with the count).
+const markerSize = s => Math.round(26 + 18 * Math.sqrt((s.no_ramp - H.hot_min) / (maxSpot - H.hot_min || 1)));
 const cellLayer = L.layerGroup([...cells].map(([k, n]) => {
   const [i, j] = k.split(",").map(Number);
   return L.rectangle([[i * CLAT, j * CLON], [(i + 1) * CLAT, (j + 1) * CLON]], {
@@ -82,11 +102,20 @@ document.getElementById("show-all").addEventListener("change", e => {
   syncDots();
 });
 document.getElementById("map-key").textContent = `Zoom in to see intersections: black, no ramp; green, ramps recorded; gray, unknown.`;
+document.getElementById("scale-bar").style.background =
+  `linear-gradient(to right, ${[0, 0.25, 0.5, 0.75, 1].map(t => cellColor(1 + t * (maxCell - 1))).join(", ")})`;
+document.getElementById("scale-max").textContent = maxCell;
 
 // Numbered hotspot markers.
 const markers = H.hotspots.map((s, i) => L.marker([s.lat, s.lon], {
-  icon: L.divIcon({ className: "", html: `<div class="hot-label">${i + 1}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
-  title: `Hotspot ${i + 1}: ${s.name}`, keyboard: true,
+  icon: L.divIcon({
+    className: "",
+    html: `<div class="hot-label" style="background:${cellColor(s.peak)};color:${inkOn(s.peak)};` +
+      `width:${markerSize(s)}px;height:${markerSize(s)}px;line-height:${markerSize(s) - 4}px">${i + 1}</div>`,
+    iconSize: [markerSize(s), markerSize(s)], iconAnchor: [markerSize(s) / 2, markerSize(s) / 2],
+  }),
+  zIndexOffset: s.no_ramp * 10, // bigger hotspots on top where markers overlap
+  title: `Hotspot ${i + 1}: ${s.name}, ${s.no_ramp} intersections with no curb ramp`, keyboard: true,
 }).on("click", () => focusSpot(i, true)).addTo(map));
 // Keyboard: Enter or Space on a focused hotspot marker zooms to it.
 document.getElementById("hotmap").addEventListener("keydown", e => {
@@ -133,7 +162,7 @@ const list = document.getElementById("spots");
 function renderSpots(n) {
   list.innerHTML = H.hotspots.slice(0, n).map((s, i) => `
     <li class="spot" id="spot-${i + 1}">
-      <span class="rank">Hotspot ${i + 1} · Council District ${esc(s.district)}</span>
+      <span class="rank"><span class="swatch" style="background:${cellColor(s.peak)};color:${inkOn(s.peak)}" aria-hidden="true">${i + 1}</span>Hotspot ${i + 1} · Council District ${esc(s.district)}</span>
       <h3>${esc(s.name)}</h3>
       <span class="big"><strong>${s.no_ramp}</strong> of ${s.with_sidewalk} intersections with no curb ramp</span>
       <span class="bar" aria-hidden="true"><span style="width:${s.share}%"></span></span>

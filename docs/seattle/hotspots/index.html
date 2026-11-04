@@ -21,9 +21,14 @@
   #hotmap { height: min(70vh, 620px); border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
   .map-tools { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin: 10px 0 0; font-size: 15px; }
   .map-tools label { display: flex; gap: 6px; align-items: center; }
-  .hot-label { background: #1d1d1f; color: #fff; border: 2px solid #fff; border-radius: 999px; font: 700 13px/22px system-ui, sans-serif;
-    width: 26px; height: 26px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
-  .hot-label.sel { background: #f4c542; color: #1d1d1f; }
+  .hot-label { box-sizing: border-box; border: 2px solid #fff; border-radius: 999px; font: 700 13px system-ui, sans-serif;
+    text-align: center; box-shadow: 0 0 0 1px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.35); }
+  /* Selected: a thick dark ring, so the fill keeps its meaning. */
+  .hot-label.sel { box-shadow: 0 0 0 3px #1d1d1f, 0 0 0 5px #fff, 0 2px 8px rgba(0,0,0,.4); }
+  .swatch { display: inline-block; min-width: 22px; height: 22px; border-radius: 999px; margin-right: 8px; text-align: center;
+    font: 700 12px/22px system-ui, sans-serif; vertical-align: middle; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .scale { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .scale .bar { width: 160px; height: 10px; border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
   .spots { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
   .spot { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
   .spot h3 { margin: 0; font-size: 18px; line-height: 1.25; }
@@ -84,6 +89,8 @@
     <p id="hotmap-help" hidden>Numbered hotspot markers are buttons: press Tab to reach them and Enter to zoom to one. The same hotspots are listed after the map.</p>
     <div class="map-tools">
       <label><input type="checkbox" id="show-all"> Also show intersections with ramps and unknowns</label>
+      <span class="scale"><span>No-ramp intersections per square: 1</span><span class="bar" id="scale-bar" aria-hidden="true"></span><span id="scale-max"></span></span>
+      <span class="small">Hotspot markers use the same colors (the darkest square in the hotspot); bigger markers have more missing ramps in total.</span>
       <span class="small" id="map-key"></span>
     </div>
   </section>
