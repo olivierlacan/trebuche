@@ -26,6 +26,14 @@
   .ar-unavailable { position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(255,255,255,.92);
     border-radius: 10px; padding: 8px 12px; font-size: 14px; color: #333; text-align: center; }
   model-viewer[ar-status="session-started"] .ar-unavailable { display: none; }
+  .slope { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 14px 0 0; }
+  .slope h3 { margin: 0 0 4px; font-size: 17px; }
+  .slope p { margin: 0 0 10px; }
+  .slope-row { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) 11em; gap: 4px 12px; align-items: center; margin: 0 0 8px; }
+  .slope-row input { width: 100%; accent-color: var(--accent); }
+  .slope-row output { font-variant-numeric: tabular-nums; font-size: 15px; }
+  @media (max-width: 600px) { .slope-row { grid-template-columns: minmax(0, 1fr) auto; } .slope-row input { grid-column: 1 / -1; grid-row: 2; } }
+  .slope .btn { margin-right: 8px; }
   .safety { background: #fff4d1; color: #4a3b00; border: 1px solid #f0d37a; border-radius: 12px; padding: 12px 14px; margin: 16px 0; }
   @media (prefers-color-scheme: dark) { .safety { background: #3a3110; color: #f7e6b0; border-color: #6b5a1f; } }
   /* On this page the viewer matters most: keep the header short, especially on phones */
@@ -99,6 +107,25 @@
       </model-viewer>
     </div>
 
+    <section class="slope" aria-labelledby="slope-h">
+      <h3 id="slope-h">Match the street's slope</h3>
+      <p class="small">Phone AR sets models down level, but streets often slope. Tilt the model to match before you open
+        AR. Directions are as you stand on the sidewalk facing the street.</p>
+      <div class="slope-row">
+        <label for="grade">Along the curb</label>
+        <input type="range" id="grade" min="-15" max="15" step="0.5" value="0">
+        <output id="grade-out" for="grade">Level</output>
+      </div>
+      <div class="slope-row">
+        <label for="cross">Toward the street</label>
+        <input type="range" id="cross" min="-8" max="8" step="0.5" value="0">
+        <output id="cross-out" for="cross">Level</output>
+      </div>
+      <p id="measure-wrap" hidden><button type="button" class="btn" id="measure">Measure the slope with your phone</button>
+        <span class="small" id="measure-msg" aria-live="polite" style="display:block;margin-top:8px">Lay your phone flat on the sidewalk next to the curb, with
+          its top pointing along the curb to your right, then tap the button and keep it still.</span></p>
+    </section>
+
     <div class="safety" role="note"><strong>Stay on the sidewalk.</strong> Place the ramp by pointing your phone at
       the street from the curb. Never step into the street or traffic to use this.</div>
 
@@ -106,10 +133,14 @@
     <ol class="steps">
       <li><strong>Open AR.</strong> Tap "View at true scale in AR" on a phone. Android uses Chrome's AR, iPhone and iPad use AR Quick Look.</li>
       <li><strong>Let it find the street.</strong> Slowly move the phone so it can detect the pavement.</li>
-      <li><strong>Place it at the curb.</strong> The model sits on the street surface. Aim at the street right in front
-        of the curb, where a ramp would meet the street (or at the middle of the curve, for corner designs), and tap to place.</li>
-      <li><strong>Line it up.</strong> Turn it with two fingers until the yellow panel faces the street and the model's
-        curb lines up with the real one. The size is locked to true scale.</li>
+      <li><strong>Place it from a few steps back.</strong> Stand back from the corner on the sidewalk and aim at the
+        street just past the curb, where a ramp would meet the street (or the middle of the curve, for corner designs).
+        It appears facing the street, and only what would be built shows: no grass or sidewalk covers the real ground.</li>
+      <li><strong>Line it up.</strong> Drag and turn it until the thin white line sits on the edge of the real curb.
+        The size is locked to true scale.</li>
+      <li><strong>Step back to see all of it.</strong> Phone AR uses the main camera and can't zoom out to the
+        wide-angle lens, so a whole corner rarely fits on screen up close. The model stays where you put it: walk back
+        along the sidewalk to take it in.</li>
       <li><strong>Try another design.</strong> If it doesn't fit, close AR, pick another design above and place it again.</li>
       <li><strong>Look around.</strong> Poles, hydrants and signs need 1 ft of clearance from the ramp and landing;
         drains and utility covers can't sit in them. Take a screenshot to attach to your request.</li>
@@ -125,8 +156,8 @@
     <ul>
       <li>This is a rough visual aid, not a design. SDOT engineers pick the ramp type and fit it to each corner.
         Showing a design that fits can still help your request.</li>
-      <li>Phone AR is usually accurate to within a few percent, but it can drift, and it assumes flat ground.
-        Real streets and sidewalks slope, so the model may float or sink a little.</li>
+      <li>Phone AR is usually accurate to within a few percent, but it can drift. The slope setting tilts the model
+        around its curb point, so on steep or uneven streets it can still float or sink a few inches at the far ends.</li>
       <li>Corners usually get two ramps, one per crossing, so you may want to place one for each.</li>
       <li>Corner designs are modeled on one curb radius each. Real corners curve more or less, so line up the ramp,
         not the whole curb.</li>
@@ -211,6 +242,63 @@
   const picked = document.querySelector("#fams input:checked")?.closest("label");
   if (picked) document.getElementById("fams").scrollLeft = picked.offsetLeft - 8; // without scrolling the page
   mv.addEventListener("load", () => { if (!mv.canActivateAR) document.getElementById("no-ar").hidden = false; });
+
+  // Street slope. Models face you (street side away) as AR Quick Look and WebXR
+  // set them down; in the model's own frame, the right of someone on the
+  // sidewalk facing the street is -x, and the street is +z.
+  const grade = document.getElementById("grade"), cross = document.getElementById("cross");
+  const deg = (pct) => Math.atan(pct / 100) * 180 / Math.PI;
+  const fmt = (v, pos, neg) => v === 0 ? "Level" : `${Math.abs(v)}% ${v > 0 ? pos : neg}`;
+  function tilt(push) {
+    const g = +grade.value, c = +cross.value;
+    mv.orientation = `${-deg(g)}deg ${-deg(c)}deg 180deg`;
+    document.getElementById("grade-out").textContent = fmt(g, "uphill to the right", "uphill to the left");
+    document.getElementById("cross-out").textContent = fmt(c, "uphill toward it", "downhill toward it");
+    if (push) {
+      g ? params.set("grade", g) : params.delete("grade");
+      c ? params.set("cross", c) : params.delete("cross");
+      history.replaceState(null, "", `?${params}`);
+    }
+  }
+  const clampTo = (el, v) => String(Math.max(+el.min, Math.min(+el.max, Math.round(v * 2) / 2)));
+  if (params.has("grade")) grade.value = clampTo(grade, +params.get("grade") || 0);
+  if (params.has("cross")) cross.value = clampTo(cross, +params.get("cross") || 0);
+  grade.addEventListener("input", () => tilt(true));
+  cross.addEventListener("input", () => tilt(true));
+  tilt(false);
+
+  // Measuring: a phone lying flat on the sidewalk, top pointing along the curb to
+  // the right, reads the grade as its front-to-back tilt (beta, top up = positive).
+  if ("DeviceOrientationEvent" in window && matchMedia("(pointer: coarse)").matches) {
+    document.getElementById("measure-wrap").hidden = false;
+    const msg = document.getElementById("measure-msg");
+    document.getElementById("measure").addEventListener("click", async () => {
+      try {
+        if (typeof DeviceOrientationEvent.requestPermission === "function" &&
+            await DeviceOrientationEvent.requestPermission() !== "granted") throw new Error("denied");
+      } catch {
+        msg.textContent = "Motion access wasn't allowed, so set the slope with the slider instead.";
+        return;
+      }
+      msg.textContent = "Measuring… keep the phone still.";
+      const betas = [], gammas = [];
+      const read = (e) => { if (e.beta != null) { betas.push(e.beta); gammas.push(e.gamma); } };
+      addEventListener("deviceorientation", read);
+      await new Promise(r => setTimeout(r, 1500));
+      removeEventListener("deviceorientation", read);
+      const mid = (a) => a.slice().sort((x, y) => x - y)[a.length >> 1];
+      if (betas.length < 5) { msg.textContent = "This phone didn't report its tilt. Set the slope with the slider instead."; return; }
+      const b = mid(betas), gm = mid(gammas);
+      if (Math.abs(b) > 20 || Math.abs(gm) > 20) {
+        msg.textContent = "That's tilted more than a street would be. Lay the phone flat on the sidewalk and try again.";
+        return;
+      }
+      grade.value = clampTo(grade, Math.tan(b * Math.PI / 180) * 100);
+      tilt(true);
+      msg.textContent = `Measured ${fmt(+grade.value, "uphill to the right", "uphill to the left").toLowerCase()} along the curb. ` +
+        "Set the slope toward the street by eye: the sidewalk's own slope isn't the street's.";
+    });
+  }
 </script>
 </body>
 </html>

@@ -41,8 +41,13 @@ MATERIALS = {
   "warning"  => { color: "#f2b51c", rough: 0.6 },  # Federal Safety Yellow (approx.)
   "joint"    => { color: "#6a6354", rough: 1.0 },
   "paint"    => { color: "#f4f1ea", rough: 0.7 },
+  "guide"    => { color: "#ffffff", rough: 0.5 },  # where the real curb's edge goes
   "grass"    => { color: "#6f8f4e", rough: 1.0 },
 }.freeze
+
+# Surfaces that stand for what's already at the corner. The illustrations draw
+# them for context; in AR they'd only hide the real ground, so they're left out.
+AR_CONTEXT = %i[grass walk].freeze
 
 SURFACE_MATERIAL = { grass: "grass", walk: "sidewalk", landing: "ramp", ramp: "ramp", flush: "ramp",
                      wing: "wing", curbtop: "curb" }.freeze
@@ -239,18 +244,26 @@ def build(design)
   design_scene(design).ops.each do |kind, args, kw, blk|
     case kind
     when :surface
+      next if AR_CONTEXT.include?(kw[:kind]) # already there in the street: leave it to the camera
+
       tris = triangulate(args[0]).map { clip_box(_1, bnd) }.select { _1.size >= 3 }
       surfaces << { mat: SURFACE_MATERIAL.fetch(kw[:kind]), pieces: tris, tris: tris.flat_map { triangulate(_1) } }
     when :wall
+      next if kw[:context]
+
       poly = clip_box(args[0], bnd)
       mesh.fan("curb", poly) if poly.size >= 3
     when :curb
+      # Only the curb the ramp lowers is new; elsewhere, a thin line marks
+      # where the real curb's top edge should line up.
       pts = args[0].walk(0, args[0].length, 0.3)
       pts.each_cons(2) do |a, b|
-        next if a[2] < 1e-4 && b[2] < 1e-4
-
-        q = clip_box([[a[0], a[1], 0], [b[0], b[1], 0], b, a], bnd)
-        mesh.fan("curb", q) if q.size >= 3
+        if a[2] > CH - 1e-3 && b[2] > CH - 1e-3
+          (seg = clip_segment(a, b, bnd)) && strip(mesh, "guide", *seg, 0.12, LIFT)
+        elsif a[2] > 1e-4 || b[2] > 1e-4
+          q = clip_box([[a[0], a[1], 0], [b[0], b[1], 0], b, a], bnd)
+          mesh.fan("curb", q) if q.size >= 3
+        end
       end
     when :warning
       domes += add_warning(mesh, args[0], args[1] || 2.0, blk)

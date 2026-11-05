@@ -237,10 +237,22 @@ version; `?type=<id>` opens a design directly, so older links (`422a`, `422a-sid
 standard library only). The designs are described the way they're drawn, later surfaces
 on top, so the script cuts each surface wherever a later one covers it in plan, adds the
 vertical faces (curb faces, side and back curbs, the slab's cut edges), and puts truncated
-domes at their real size and spacing (422k) on every warning panel. Streets and
-crosswalks are left out: in AR, the real street is the floor. `--check` prints each
+domes at their real size and spacing (422k) on every warning panel. Only what would be
+built goes in: the illustrations' grass, existing sidewalk, full-height curb, street and
+crosswalks are left out so they don't hide the real ground, and a thin white line marks
+where the real curb's top edge should line up. `--check` prints each
 model's footprint and dome count. Every file passes the Khronos glTF validator with no
 issues.
+
+The page turns each model 180° (`orientation`) so AR sets it down with its street side
+away from you, and the 3D preview shows it from the sidewalk the way you'll see it. AR
+places models level, so the page has two slope sliders (along the curb, toward the
+street; `?grade=4&cross=-2` in percent) that tilt the model before AR opens: model-viewer
+builds the iPhone's USDZ from the live scene, tilt included, and WebXR on Android uses it
+directly. On phones, a button measures the grade along the curb from the phone lying flat
+on the sidewalk (DeviceOrientation, with iOS's permission prompt). Phone AR can't use the
+wide-angle camera, so the page tells people to place the model from a few steps back and
+walk back to see all of it.
 
 Corners that need a ramp link to it from the map (`ar/?corner=61-NE` names the corner and
 links back). The page tells people to stay on the sidewalk, and says plainly that it's a

@@ -516,8 +516,8 @@ def build_422h(sc)
   sc.crosswalk([0, iz], [1, 0], [0, 1])
   [-1, 1].each do |sx|
     a, b = sx * hw, sx * 40
-    sc.wall([[a, -iz, 0], [b, -iz, 0], [b, -iz, CH], [a, -iz, CH]])
-    sc.wall([[a, iz, 0], [b, iz, 0], [b, iz, CH], [a, iz, CH]])
+    sc.wall([[a, -iz, 0], [b, -iz, 0], [b, -iz, CH], [a, -iz, CH]], context: true) # the island's own curbs
+    sc.wall([[a, iz, 0], [b, iz, 0], [b, iz, CH], [a, iz, CH]], context: true)
     sc.wall([[a, -iz, 0], [a, iz, 0], [a, iz, CH], [a, -iz, CH]])
     sc.surface([[a, -iz, CH], [b, -iz, CH], [b, iz, CH], [a, iz, CH]], kind: :grass)
     sc.surface([[a, -iz, CH], [b, -iz, CH], [b, -iz + 1.0, CH], [a, -iz + 1.0, CH]], kind: :walk)
