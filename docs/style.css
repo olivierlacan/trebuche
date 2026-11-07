@@ -12,6 +12,7 @@
   --selected: #1f5fae;
   --checked: #c2410c;
   --checked-soft: #fde7da;
+  --checked-text: #b13c0b;
   --street: #ffffff;
   --panel-w: 400px;
 }
@@ -19,13 +20,13 @@
   :root:not([data-theme="light"]) {
     --bg: #17181a; --fg: #ececec; --muted: #a4a7ab; --line: #34363a; --soft: #222326;
     --accent: #78a9ec; --accent-fg: #0d1520;
-    --checked-soft: #4a2414; --street: #3a3c40;
+    --checked-soft: #4a2414; --street: #3a3c40; --checked-text: #f59a6b;
   }
 }
 :root[data-theme="dark"] {
   --bg: #17181a; --fg: #ececec; --muted: #a4a7ab; --line: #34363a; --soft: #222326;
   --accent: #78a9ec; --accent-fg: #0d1520;
-  --checked-soft: #4a2414; --street: #3a3c40;
+  --checked-soft: #4a2414; --street: #3a3c40; --checked-text: #f59a6b;
 }
 
 * { box-sizing: border-box; }
@@ -67,28 +68,23 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .tabs .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px; border-radius: 9px;
   background: var(--selected); color: #fff; font-size: 11px; text-align: center; }
 .tabs .count.checks { background: var(--checked); }
-.check-form fieldset { border: 0; padding: 0; margin: 8px 0; }
-.check-form fieldset.issues .small { margin: 4px 0 0; }
-.check-form legend { font-weight: 600; font-size: 14px; padding: 0; }
-.check-form .check { margin: 2px 0; }
-.check-form .field { display: block; font-size: 14px; margin: 8px 0; }
-.check-form .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
+.report .field { display: block; font-size: 14px; margin: 8px 0; }
+.report .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
   border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .check-diagram { margin: 8px 0; }
 .check-diagram svg { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
 .check-diagram .corner { cursor: pointer; }
+.check-diagram svg { width: 180px; }
 .check-diagram .corner-name { font: 600 15px system-ui, sans-serif; fill: var(--fg); }
 .check-diagram .street-name { font: 12px system-ui, sans-serif; fill: var(--muted); }
-.check-grid { border-collapse: collapse; margin: 6px 0; width: 100%; font-size: 14px; }
-.check-grid th[scope=row] { text-align: left; font-weight: 400; padding: 2px 6px 2px 0; }
-.check-grid th[scope=row] .link { text-align: left; }
-.check-grid th[scope=col] { font-size: 13px; font-weight: 600; padding: 0 0 2px; }
-.check-grid th[scope=col].here { text-decoration: underline 3px var(--checked); text-underline-offset: 4px; }
-.check-grid td { text-align: center; padding: 0; width: 15%; }
-.check-grid td.na { color: var(--muted); }
-.check-grid tr.seen { border-bottom: 1px solid var(--line); }
-.check-grid tr.seen th .link { font-weight: 600; }
-.check-grid input[type=checkbox] { width: 22px; height: 22px; margin: 6px; cursor: pointer; }
+.where:empty { display: none; }
+.report { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin: 12px 0; background: var(--bg); }
+.report[open] { padding-bottom: 4px; border-color: var(--checked); }
+.report summary { cursor: pointer; font-weight: 600; padding: 10px 0; color: var(--checked-text); }
+.report-list { margin: 4px 0 8px; }
+.report-list .check { margin: 0; padding: 7px 0; border-top: 1px solid var(--line); }
+.report-list .check:first-child { border-top: 0; }
+.report-list input[type=checkbox] { width: 22px; height: 22px; flex: none; }
 ul.checks { list-style: none; padding: 0; margin: 8px 0; }
 ul.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
 

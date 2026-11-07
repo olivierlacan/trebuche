@@ -353,20 +353,22 @@ intersection, then to a quadrant.
 ## Checking corners in person
 
 The sources can be years out of date, so the map lets neighbors record what they see.
-On any corner, **Checked it in person?** covers the whole intersection with checkboxes:
-one column per corner, and rows for **Looked at**, **No ramp north–south** (for crossing
-the side street), **No ramp east–west** (for crossing the main street), **No yellow pad**,
-**Older crisscross style**, **Cracked or uneven** and **Lip at street edge**. A corner
-ticked with nothing else has ramps both directions with yellow pads. Tapping a row's name
-ticks it at every corner, so an intersection like Dayton & N 83rd St (older ramps,
-north–south only, no pads, at all four corners) is three taps. Above the grid, a plan of
-the intersection redraws as boxes are ticked (yellow ramp: with a pad, gray: without, ✕:
-no ramp), and tapping a corner on it ticks **Looked at**. One note covers anything else.
+Reports go one corner at a time, the corner open in the panel. Under its status, **Report
+what's here** opens a short checklist for that corner: **No ramp to cross** each street
+it needs a ramp for, **No yellow pad**, **Older crisscross style**, **Cracked or uneven**
+and **Lip at street edge**. Each tick is saved right away. **Nothing wrong here** records
+a good corner in one tap, and **Same as NW** (the last corner reported at that
+intersection) copies it, so Dayton & N 83rd St, where all four corners have the same
+older ramps, is one corner's ticks and then three taps. A small plan of the intersection
+shows what's been reported (yellow ramp: with a pad, gray: without, ✕: no ramp) and
+outlines the open corner; tapping another corner, or a **Next** link, opens it. A note
+per corner covers anything else.
 There's no server: checks
 are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
 street's map) and the corners are redrawn right away for that visitor, with an orange
-check. With location on (the locate button), the form says whether the phone is at the
-intersection on screen, offers to switch if it's at a different one, and each check
+check. With location on (the locate button), the panel says whether the phone is at the
+intersection on screen, offers to switch if it's at a different one, opens the report
+when you reach the open corner, and each check
 records how far the phone was from its corner and how precise the fix was (never the
 position itself). A whole walk can go out at once from the **Checks** tab, which opens
 the `.github/ISSUE_TEMPLATE/field-check.yml` issue form (label `field-check`) with every

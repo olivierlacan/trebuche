@@ -470,8 +470,6 @@ function renderCorner() {
   const srcRow = (name, value, extra) => `<tr><th>${name}</th><td>${esc(value)}${extra ? `<br><span class="small">${extra}</span>` : ""}</td></tr>`;
   const wos = (c.work_orders || []).filter(w => workState(w));
   const mine = checks[c.corner_id];
-  const here = intersectionCorners(c);
-  const noteNow = here.map(x => checks[x.corner_id]?.notes).find(Boolean) || "";
 
   el.innerHTML = `
     <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
@@ -486,6 +484,12 @@ function renderCorner() {
     ${upgradeText(c) ? `<p><span class="status upgrade">Needs upgrade</span> ${esc(upgradeText(c))}</p>` : ""}
     ${c.sources_disagree ? `<p class="small">The sources disagree here${c.note ? `: ${esc(c.note)}` : ""}. Worth a look in person before filing.</p>` : ""}
 
+    <p class="small where" id="check-where">${whereText(c)}</p>
+    <details class="report" data-report ${reportOpen(c) ? "open" : ""}>
+      <summary>${mine ? "Your report on this corner" : "Report what's here"}</summary>
+      ${reportBody(c)}
+    </details>
+
     <div class="buttons">
       <button class="button primary" data-action="copy-request">Copy request text</button>
       <button class="button ${selected ? "on" : ""}" data-action="toggle-select" aria-pressed="${selected}">${selected ? "In group request ✓" : "Add to group request"}</button>
@@ -498,35 +502,6 @@ function renderCorner() {
     </div>
     ${needsWork(c) ? `<p class="small">On site? <a href="../../ar/?area=${encodeURIComponent(AREA.slug)}&corner=${encodeURIComponent(shortId(c.corner_id))}">See a standard ramp at this corner in AR</a>, to check what's in the way.</p>` : ""}
     <p class="small">Not sure which form? See <button class="link" data-goto="request">How to request</button>.</p>
-
-    <h2>Checked it in person?</h2>
-    <form class="check-form" data-check-form>
-      <p class="small">Tick each corner you looked at, then anything wrong with it. A corner ticked with nothing
-        else means it has ramps both directions with yellow pads. Tap a row's name to tick it at every corner.
-        It's saved in this browser, so you can do a whole walk and send it all from
-        <button class="link" type="button" data-goto="checks">Checks</button>.</p>
-      <div class="check-diagram" aria-hidden="true">${checkDiagram(c, formState(here))}</div>
-      <table class="check-grid">
-        <tr><td></td>${here.map(x => `<th scope="col"${x.corner_id === c.corner_id ? ' class="here"' : ""}>${esc(x.corner)}</th>`).join("")}</tr>
-        ${CHECK_ROWS.map(([row, label, need]) => `<tr${row === "seen" ? ' class="seen"' : ""}>
-          <th scope="row"><button class="link" type="button" data-row="${row}">${esc(label)}</button></th>
-          ${here.map(x => {
-            if (need && !needsOf(x).includes(need)) return `<td class="na">–</td>`;
-            const on = formState([x])[x.corner_id][row];
-            return `<td><input type="checkbox" name="${row}|${esc(x.corner_id)}" ${on ? "checked" : ""}
-              aria-label="${esc(x.corner)} corner: ${esc(label)}"></td>`;
-          }).join("")}</tr>`).join("")}
-      </table>
-      ${needsOf(c).length > 1 ? `<p class="small">North–south ramps are for crossing ${esc(baseStreet(c))};
-        east–west ramps are for crossing ${esc(MAIN_STREET)}. A corner should have both, each with a yellow pad
-        (the panel of raised bumps).</p>` : ""}
-      <label class="field">Note (optional)
-        <input type="text" name="notes" maxlength="200" value="${esc(noteNow)}"
-          placeholder="e.g. NE ramp points into the middle of the intersection"></label>
-      <p class="small" id="check-where">${whereText(c)}</p>
-      <div class="buttons"><button class="button primary" type="submit">Save</button></div>
-      <p class="small">Untick "Looked at" to remove a corner's check.</p>
-    </form>
 
     <h2>What each source says</h2>
     <table class="facts">
@@ -559,64 +534,105 @@ document.getElementById("corner-detail").addEventListener("click", e => {
   if (b.dataset.action === "copy-link") copy(shareUrl({ corner: shortId(c.corner_id) }), "Link copied");
   if (b.dataset.action === "toggle-select") { toggleSelected(c.corner_id); renderCorner(); }
 });
-// Ticking anything at a corner marks it as looked at; unticking "Looked at" clears it.
-// Tapping a row's name ticks that row at every corner (or unticks it if all were ticked).
-function checkboxes(form, row) {
-  return [...form.querySelectorAll("input[type=checkbox]")].filter(i => !row || i.name.startsWith(`${row}|`));
+// ------------------------------------------------------------------ report one corner
+// One corner at a time: the corner open in the panel. Each tick saves right away.
+state.reportOpen = null; // null: open when you've reported this corner or your phone is at it
+function reportOpen(c) {
+  if (state.reportOpen != null) return state.reportOpen;
+  const fix = freshFix();
+  return !!checks[c.corner_id] || !!(fix && map.distance([fix.lat, fix.lng], [c.lat, c.lon]) * FT < ON_SITE_FT);
 }
-function syncChecks(form) {
-  form.querySelector(".check-diagram").innerHTML =
-    checkDiagram(byId.get(state.corner), formState(intersectionCorners(byId.get(state.corner)), form));
+const crossShort = (c, n) => (n === "main" ? MAIN_STREET : baseStreet(c));
+
+function reportBody(c) {
+  const k = checks[c.corner_id];
+  const covered = k ? coveredBy(k.ramps_for) : needsOf(c), issues = issueList(k?.issues);
+  const noRamps = !!k && !covered.length;
+  const box = (name, label, on, disabled) => `<label class="check"><input type="checkbox" name="${name}"
+    ${on ? "checked" : ""} ${disabled ? "disabled" : ""}> ${esc(label)}</label>`;
+  const siblings = intersectionCorners(c).filter(x => x !== c);
+  const last = siblings.map(x => [x, checks[x.corner_id]]).filter(([, v]) => v).sort((a, b) => (a[1].at || 0) - (b[1].at || 0)).pop();
+  const todo = siblings.filter(x => !checks[x.corner_id]);
+  return `
+    <div class="check-diagram">${checkDiagram(c)}</div>
+    <p><strong>${esc(CORNER_WORDS[c.corner][0].toUpperCase() + CORNER_WORDS[c.corner].slice(1))} corner.</strong>
+      Tick anything missing or wrong. Each tick is saved.</p>
+    <div class="report-list">
+      ${needsOf(c).map(n => box(`miss|${n}`, `No ramp to cross ${crossShort(c, n)}`, !!k && !covered.includes(n))).join("")}
+      ${Object.entries(RAMP_ISSUES).map(([i, [label]]) => box(i, label, issues.includes(i), noRamps)).join("")}
+    </div>
+    <div class="buttons">
+      <button class="button ${k && k.ramps_for === needsOf(c).join("+") && !issues.length ? "on" : ""}" type="button" data-report-action="ok">Nothing wrong here</button>
+      ${last && !k ? `<button class="button" type="button" data-report-action="same" data-from="${esc(last[0].corner_id)}">Same as ${esc(last[0].corner)}</button>` : ""}
+      ${k ? `<button class="button" type="button" data-report-action="clear">Clear</button>` : ""}
+    </div>
+    <label class="field">Note (optional)
+      <input type="text" name="notes" maxlength="200" value="${esc(k?.notes || "")}"
+        placeholder="e.g. ramp points into the middle of the intersection"></label>
+    ${freshFix() ? "" : `<p class="small">Tip: turn on your location (the button under the zoom buttons) first, and each
+      report records how far you were from the corner, which shows it was made on site. Only that distance is
+      saved, never your position.</p>`}
+    <p class="small">${k ? `Saved in this browser: ${esc(cornerDescription(c, k))}.` : "Nothing saved for this corner yet."}
+      ${todo.length ? ` Next: ${todo.map(x => `<button class="link" type="button" data-report-corner="${esc(x.corner_id)}">${esc(x.corner)}</button>`).join(", ")}.`
+        : ` Every corner here is done. <button class="link" type="button" data-goto="checks">Send your checks</button>.`}</p>`;
 }
-document.getElementById("corner-detail").addEventListener("change", e => {
-  const i = e.target;
-  if (!i.form?.matches("[data-check-form]") || i.type !== "checkbox") return;
-  const [row, id] = i.name.split("|");
-  if (row !== "seen" && i.checked) i.form.elements[`seen|${id}`].checked = true;
-  if (row === "seen" && !i.checked) checkboxes(i.form).filter(x => x.name.endsWith(`|${id}`)).forEach(x => { x.checked = false; });
-  syncChecks(i.form);
-});
-document.getElementById("corner-detail").addEventListener("click", e => {
-  const b = e.target.closest("[data-row], [data-corner-toggle]");
-  if (!b) return;
-  const form = b.closest("form");
-  if (b.dataset.cornerToggle) {
-    const box = form.elements[`seen|${b.dataset.cornerToggle}`];
-    box.checked = !box.checked;
-    box.dispatchEvent(new Event("change", { bubbles: true }));
-    return;
-  }
-  const boxes = checkboxes(form, b.dataset.row), on = !boxes.every(x => x.checked);
-  boxes.forEach(x => { x.checked = on; x.dispatchEvent(new Event("change", { bubbles: true })); });
-});
-document.getElementById("corner-detail").addEventListener("submit", e => {
-  if (!e.target.matches("[data-check-form]")) return;
-  e.preventDefault();
-  const form = e.target, date = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
-  const notes = String(form.elements.notes.value || "").trim().replace(/\s+/g, " ");
-  const here = intersectionCorners(byId.get(state.corner)), st = formState(here, form);
-  let saved = 0;
-  for (const x of here) {
-    const a = st[x.corner_id];
-    if (!a.seen) { delete checks[x.corner_id]; }
-    else {
-      const covered = needsOf(x).filter(n => !a[n === "main" ? "miss_ew" : "miss_ns"]);
-      const ramps_for = covered.length ? covered.join("+") : "none";
-      const issues = ramps_for === "none" ? "" : Object.keys(RAMP_ISSUES).filter(i => a[i]).join("+");
-      const old = checks[x.corner_id], fix = onSite(x);
-      // Re-saving the same answer keeps its date and "sent" mark.
-      checks[x.corner_id] = old && old.ramps_for === ramps_for && (old.issues || "") === issues &&
-        (old.notes || "") === notes && (!fix || old.distance_ft) ? old : { date, ramps_for, issues, notes, ...fix };
-      saved++;
-    }
-    applyCheck(x);
-    refreshMarker(x.corner_id);
-  }
+
+function saveReport(c, { missing = [], issues = [], notes = checks[c.corner_id]?.notes || "" }) {
+  const covered = needsOf(c).filter(n => !missing.includes(n));
+  const ramps_for = covered.length ? covered.join("+") : "none";
+  const old = checks[c.corner_id];
+  checks[c.corner_id] = {
+    date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local
+    ramps_for, issues: ramps_for === "none" ? "" : issues.join("+"), notes,
+    ...(onSite(c) || (old?.distance_ft != null ? { distance_ft: old.distance_ft, accuracy_ft: old.accuracy_ft } : {})),
+    at: Date.now(), // order of saving, for "Same as"
+  };
+  afterReport(c);
+}
+function afterReport(c, focus) {
   saveChecks();
+  applyCheck(c);
+  refreshMarker(c.corner_id);
   renderCorner();
   renderChecks();
   renderList();
-  toast(saved ? `Saved in this browser (${myChecks().length} to send)` : "Checks removed");
+  if (focus) document.querySelector(`#corner-detail [data-report] [name="${focus}"]`)?.focus();
+}
+function readReport(box) {
+  const els = [...box.querySelectorAll("input[type=checkbox]")];
+  return {
+    missing: els.filter(i => i.checked && i.name.startsWith("miss|")).map(i => i.name.slice(5)),
+    issues: els.filter(i => i.checked && RAMP_ISSUES[i.name]).map(i => i.name),
+    notes: box.querySelector("[name=notes]").value.trim().replace(/\s+/g, " "),
+  };
+}
+const detail = document.getElementById("corner-detail");
+detail.addEventListener("change", e => {
+  const box = e.target.closest("[data-report]");
+  if (!box) return;
+  saveReport(byId.get(state.corner), readReport(box));
+  if (e.target.type === "checkbox") {
+    document.querySelector(`#corner-detail [data-report] [name="${e.target.name}"]`)?.focus();
+    toast(`Saved (${myChecks().length} to send)`);
+  }
+});
+detail.addEventListener("toggle", e => {
+  if (e.target.matches("[data-report]")) state.reportOpen = e.target.open;
+}, true);
+detail.addEventListener("click", e => {
+  const go = e.target.closest("[data-report-corner]");
+  if (go) { state.reportOpen = true; return selectCorner(go.dataset.reportCorner, { pan: false }); }
+  const b = e.target.closest("[data-report-action]");
+  if (!b) return;
+  const c = byId.get(state.corner);
+  if (b.dataset.reportAction === "ok") { saveReport(c, {}); toast("Saved: nothing wrong here"); }
+  if (b.dataset.reportAction === "clear") { delete checks[c.corner_id]; afterReport(c); toast("Cleared"); }
+  if (b.dataset.reportAction === "same") {
+    const k = checks[b.dataset.from], from = byId.get(b.dataset.from);
+    const missing = needsOf(from).filter(n => !coveredBy(k.ramps_for).includes(n)).filter(n => needsOf(c).includes(n));
+    saveReport(c, { missing, issues: issueList(k.issues), notes: k.notes || "" });
+    toast(`Saved, same as ${from.corner}`);
+  }
 });
 
 // With location on, a check records how far the phone was from the corner, and how
@@ -634,10 +650,7 @@ function onSite(c) {
 // Where the phone says you are, compared with the intersection on screen.
 function whereText(c) {
   const fix = freshFix();
-  if (!fix) {
-    return `Tip: turn on your location (the button under the zoom buttons) first, and each check records how far you
-      were from the corner, which shows it was made on site. Only that distance is saved, never your position.`;
-  }
+  if (!fix) return "";
   const [near, d] = nearestCorner(fix.lat, fix.lng);
   if (near.intersection_id !== c.intersection_id && d < 450) {
     return `<strong>Your phone puts you at ${esc(MAIN_STREET)} &amp; ${esc(baseStreet(near))}</strong>, not this intersection.
@@ -645,8 +658,8 @@ function whereText(c) {
   }
   const here = Math.min(...intersectionCorners(c).map(x => map.distance([fix.lat, fix.lng], [x.lat, x.lon])));
   return here * FT < 300
-    ? `📍 You're here (about ${Math.round(here * FT / 10) * 10} ft from the nearest corner). Checks you save will say so.`
-    : `Your phone puts you about ${Math.round(here * FT / 10) * 10} ft away, so these checks won't count as on site.`;
+    ? `📍 You're here (about ${Math.round(here * FT / 10) * 10} ft from the nearest corner). Your reports will say so.`
+    : `Your phone puts you about ${Math.round(here * FT / 10) * 10} ft away, so reports here won't count as on site.`;
 }
 function locatedText(k) {
   return k.distance_ft != null ? `on site, ${k.distance_ft} ft from the corner (±${k.accuracy_ft} ft)` : "";
@@ -657,37 +670,11 @@ function intersectionCorners(c) {
   return corners.filter(x => x.intersection_id === c.intersection_id)
     .sort((a, b) => order.indexOf(a.corner) - order.indexOf(b.corner));
 }
-// [row, label, the crossing the corner must need for the row to apply]
-// Every street so far runs north–south: its ramps for crossing it face east–west.
-const CHECK_ROWS = [
-  ["seen", "Looked at", null],
-  ["miss_ns", "No ramp north–south", "cross"],
-  ["miss_ew", "No ramp east–west", "main"],
-  ...Object.entries(RAMP_ISSUES).map(([k, [label]]) => [k, label, null]),
-];
-const dirName = n => (n === "main" ? "east–west" : "north–south");
-
-// { corner_id: { seen, miss_ns, miss_ew, no_warning, ... } } from the form, or from saved checks.
-function formState(cs, form) {
-  const out = {};
-  for (const x of cs) {
-    const a = out[x.corner_id] = {};
-    if (form) {
-      for (const [row] of CHECK_ROWS) a[row] = !!form.elements[`${row}|${x.corner_id}`]?.checked;
-    } else if (checks[x.corner_id]) {
-      const k = checks[x.corner_id], covered = coveredBy(k.ramps_for);
-      a.seen = true;
-      for (const n of needsOf(x)) a[n === "main" ? "miss_ew" : "miss_ns"] = !covered.includes(n);
-      for (const i of issueList(k.issues)) a[i] = true;
-    }
-  }
-  return out;
-}
-
 // A plan of the intersection: the main street runs up and down. Each corner has a slot
 // for each ramp it needs, at the curb by its crosswalk: yellow for a ramp with a pad,
-// gray without one, an X for no ramp, dashed while the corner isn't looked at.
-function checkDiagram(c, st) {
+// gray without one, an X for no ramp, dashed until the corner is reported. The open
+// corner is outlined; tapping another corner opens it.
+function checkDiagram(c) {
   const S = 220, A = 82, B = 138; // street edges
   const parts = [
     `<rect width="${S}" height="${S}" fill="var(--soft)"/>`,
@@ -699,29 +686,30 @@ function checkDiagram(c, st) {
   for (const x of intersectionCorners(c)) {
     const west = x.corner.endsWith("W"), north = x.corner.startsWith("N");
     const cx = west ? A : B, cy = north ? A : B, sx = west ? -1 : 1, sy = north ? -1 : 1;
-    const a = st[x.corner_id] || {};
-    const block = `x="${west ? 0 : B}" y="${north ? 0 : B}" width="${A}" height="${A}"`;
-    parts.push(`<g data-corner-toggle="${esc(x.corner_id)}" class="corner${a.seen ? " seen" : ""}">
-      <rect ${block} fill="${a.seen ? "var(--checked-soft)" : "transparent"}"/>
+    const k = checks[x.corner_id], covered = k ? coveredBy(k.ramps_for) : [], noPad = issueList(k?.issues).includes("no_warning");
+    const current = x.corner_id === c.corner_id;
+    parts.push(`<g data-report-corner="${esc(x.corner_id)}" class="corner">
+      <rect x="${west ? 2 : B + 2}" y="${north ? 2 : B + 2}" width="${A - 4}" height="${A - 4}" rx="6"
+        fill="${k ? "var(--checked-soft)" : "transparent"}" ${current ? 'stroke="var(--checked)" stroke-width="3"' : ""}/>
       <text x="${west ? A / 2 : B + A / 2}" y="${north ? A / 2 : B + A / 2}" dy=".35em" text-anchor="middle" class="corner-name">${x.corner}</text></g>`);
     for (const n of needsOf(x)) {
-      // north–south ramp sits on the curb along the cross street; east–west on the main street's curb
+      // ramp for crossing the side street sits on its curb; for crossing the main street, on the main street's curb
       const [w, h] = n === "cross" ? [22, 9] : [9, 22];
-      const rx = n === "cross" ? cx + sx * 8 + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -h * 0 - w : 0);
+      const rx = n === "cross" ? cx + sx * 8 + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -w : 0);
       const ry = n === "cross" ? cy + (sy < 0 ? -h : 0) : cy + sy * 8 + (sy < 0 ? -h : 0);
-      const missing = a[n === "main" ? "miss_ew" : "miss_ns"];
-      if (!a.seen) {
+      if (!k) {
         parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="none" stroke="var(--muted)" stroke-dasharray="3 2"/>`);
-      } else if (missing) {
+      } else if (!covered.includes(n)) {
         const mx = rx + w / 2, my = ry + h / 2;
         parts.push(`<path d="M${mx - 6},${my - 6}L${mx + 6},${my + 6}M${mx + 6},${my - 6}L${mx - 6},${my + 6}" stroke="var(--fg)" stroke-width="3" stroke-linecap="round"/>`);
       } else {
-        parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="${a.no_warning ? "#9a9a9a" : "#f2c200"}" stroke="var(--fg)" stroke-width="1"/>`);
+        parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="${noPad ? "#9a9a9a" : "#f2c200"}" stroke="var(--fg)" stroke-width="1"/>`);
       }
     }
   }
-  return `<svg viewBox="0 0 ${S} ${S}" width="${S}" height="${S}">${parts.join("")}</svg>
-    <p class="small">Yellow: ramp with a yellow pad. Gray: ramp without one. ✕: no ramp. Tap a corner to tick it.</p>`;
+  return `<svg viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img"
+      aria-label="Plan of ${esc(MAIN_STREET)} and ${esc(baseStreet(c))}, ${esc(c.corner)} corner selected">${parts.join("")}</svg>
+    <p class="small">Yellow: ramp with a yellow pad. Gray: ramp without one. ✕: no ramp. Tap a corner to report it.</p>`;
 }
 
 // ------------------------------------------------------------------ checks: review + send
@@ -741,7 +729,7 @@ function cornerDescription(c, k) {
   const covered = coveredBy(k.ramps_for), need = needsOf(c);
   if (!covered.length) return need.length > 1 ? "no ramps" : "no ramp";
   const miss = need.filter(n => !covered.includes(n));
-  return [miss.length ? miss.map(n => `no ramp ${dirName(n)}`).join(", ") : need.length > 1 ? "ramps both directions" : "ramp",
+  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : need.length > 1 ? "ramps both ways" : "ramp",
     ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].join(", ");
 }
 function intersectionSummary(cs) {
@@ -782,7 +770,7 @@ function renderChecks() {
   count.textContent = cs.length;
   const el = document.getElementById("checks-body");
   if (!cs.length) {
-    el.innerHTML = `<p>No checks saved in this browser. Open a corner on the map and use <strong>Checked it in person?</strong></p>`;
+    el.innerHTML = `<p>No checks saved in this browser. Open a corner on the map and use <strong>Report what's here</strong></p>`;
     return;
   }
   const n = checkGroups(cs).length;
@@ -1048,6 +1036,11 @@ function gpsUpdate(pos) {
   }
   const where = document.getElementById("check-where");
   if (where && state.corner) where.innerHTML = whereText(byId.get(state.corner));
+  if (where && state.corner && !where.dataset.opened) {
+    // Arriving at the open corner opens its report, once.
+    const c = byId.get(state.corner);
+    if (state.reportOpen == null && reportOpen(c)) { where.dataset.opened = "1"; document.querySelector("#corner-detail [data-report]").open = true; }
+  }
   const [c, d] = nearestCorner(lat, lng);
   const el = document.getElementById("gps-status");
   el.hidden = false;
