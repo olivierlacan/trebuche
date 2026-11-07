@@ -208,12 +208,17 @@ function reportIcon(kind, c, n) {
     body = rampPlan({ extra: `<path d="M11.5,8.5l2.5,3l-2,2.5l4,2.5" fill="none" stroke="${ICON.ink}" stroke-width="1.4" stroke-linejoin="round"/>
       <path d="M19,9.5l1.5,3l2,1" fill="none" stroke="${ICON.ink}" stroke-width="1"/>` });
   } else if (kind === "lip") {
-    // Seen from the side: a wheel rolling down the ramp toward a step before the street.
+    // Elevation: someone walking up from the street catches a toe on the step where the
+    // ramp meets the gutter (red) and pitches forward.
     body = `<rect width="32" height="32" fill="#eef0f2"/>
-      <path d="M0,10H6L24,20V25H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
-      <rect x="24" y="25" width="8" height="7" fill="${ICON.street}"/>
-      <circle cx="17" cy="13.7" r="4" fill="#fff" stroke="${ICON.ink}" stroke-width="1.4"/><circle cx="17" cy="13.7" r="1" fill="${ICON.ink}"/>
-      <path d="M24,19.5V25.5" stroke="#c0392b" stroke-width="2.6" stroke-linecap="round"/>`;
+      <path d="M0,15L16,22V25H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
+      <rect x="16" y="25" width="16" height="7" fill="${ICON.street}"/>
+      <path d="M16,21.6V25.4" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>
+      <g fill="none" stroke="${ICON.ink}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="10.5" cy="7.5" r="2.4" fill="${ICON.ink}" stroke="none"/>
+        <path d="M13,10L20.5,15.5M20.5,15.5L17.2,21.4L16.4,22.2M20.5,15.5L25,20L27.5,25M15,11.5L10.5,14.5M15,11.5L12.5,16.5"/>
+      </g>
+      <path d="M27,6.5l2,-1.5M28.5,10l2.4,-.3" stroke="${ICON.ink}" stroke-width="1" stroke-linecap="round"/>`;
   }
   return `<svg class="report-icon" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">${body}</svg>`;
 }
