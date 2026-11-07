@@ -374,14 +374,18 @@ check. With location on (the locate button), the panel says whether the phone is
 intersection on screen, offers to switch if it's at a different one, opens the report
 when you reach the open corner, and each check
 records how far the phone was from its corner and how precise the fix was (never the
-position itself). A whole walk can go out at once from the **Checks** tab, which opens
-the `.github/ISSUE_TEMPLATE/field-check.yml` issue form (label `field-check`) with every
-field filled in from query parameters (`template=field-check.yml&summary=…&rows=…&map=…`):
+position itself). A whole walk can go out at once from the **Checks** tab, which opens a
+new GitHub issue with its title and body filled in from the link (`title=…&body=…&labels=field-check`):
 one line per intersection ("ramps both ways at all 4 corners (phone location on site)"),
-a Photos field to drag pictures into (GitHub hosts them; a link can't attach files, so
-this is the one manual step), and the rows as CSV. If the link would
-be too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV**
-is there for people without a GitHub account.
+a Photos section to drag pictures into (GitHub hosts them; a link can't attach files, so
+this is the one manual step), the rows as CSV, and a map link. On phones the link often
+opens in the GitHub app, which ignores a prefilled body, so **Send** also copies the whole
+report: if the issue comes up empty, paste. (**I filed this** and **We filed these** copy
+their text the same way.) If the link would be too long for GitHub, the rows are left out
+of it and only the clipboard has them. The label sticks only for people who can label
+issues in the repository. `.github/ISSUE_TEMPLATE/field-check.yml` is the same report as an
+issue form, for people who start from GitHub's **New issue**. **Copy as CSV** is there for
+people without a GitHub account.
 
 To publish them, paste the rows into `data/field-checks.csv` and push:
 

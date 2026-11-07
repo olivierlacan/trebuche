@@ -1,5 +1,6 @@
-# Opened prefilled from the map's Checks tab: each field's id is a query parameter
-# (issues/new?template=field-check.yml&summary=...&rows=...&map=...).
+# For reports started from GitHub's "New issue". The map's Checks tab doesn't link here:
+# it fills a plain title and body instead, because the GitHub mobile app ignores issue-form
+# fields in a link (and Send also copies the report, in case the app drops the body too).
 name: Checked in person
 description: Corners you checked on the street. Easiest to send from the map's Checks tab, which fills this in.
 title: "Checked in person: "

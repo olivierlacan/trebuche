@@ -491,6 +491,19 @@ async function copy(text, what = "Copied") {
   toast(what);
 }
 
+// Phones often open GitHub links in the GitHub app, which can drop a prefilled body.
+// Copy it first (while this page still has focus) so it's one paste away.
+function copyIssueBody(url) {
+  const body = new URL(url).searchParams.get("body");
+  if (!body) return;
+  navigator.clipboard?.writeText(body).catch(() => {});
+  toast("Issue text copied. If GitHub opens an empty issue, paste it in.");
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest(`a[href^="https://github.com/${REPO}/issues/new"]`);
+  if (a) copyIssueBody(a.href);
+});
+
 function issueUrl(cs) {
   const ids = cs.map(c => c.corner_id);
   const title = `Request filed: ${ids.length === 1 ? cornerTitle(cs[0]) : `${ids.length} corners`}`;
@@ -836,19 +849,39 @@ const checkGroups = cs => groupByIntersection(cs).map(g => [`${MAIN_STREET} & ${
 
 const ON_SITE_FT = 300;
 const onSiteGroup = g => g.some(c => checks[c.corner_id].distance_ft != null && checks[c.corner_id].distance_ft < ON_SITE_FT);
-const groupLine = (name, g) => `${name}: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`;
 
 // Opens .github/ISSUE_TEMPLATE/field-check.yml with every field filled in: each
 // field's id is a query parameter.
-function checksIssueUrl(cs, csvInBody = true) {
+// The whole report as Markdown: the issue's body, and what Send copies to the clipboard.
+function checksIssueBody(cs, csvInBody = true) {
   const groups = checkGroups(cs);
   const notes = [...new Set(cs.map(c => checks[c.corner_id].notes).filter(Boolean))];
+  return [
+    "<!-- Please don't include your name, phone, or email. -->",
+    "",
+    ...groups.map(([name, g]) => `- **${name}**: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`),
+    ...(notes.length ? ["", ...notes.map(n => `> ${n}`)] : []),
+    "",
+    "### Photos (optional)",
+    "",
+    "Drag photos of the corners here, or attach them from your phone.",
+    "",
+    "### Rows for `data/field-checks.csv`",
+    "",
+    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(Too long for a link: paste the rows from your clipboard here.)"]),
+    "",
+    `Map: ${shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" })}`,
+  ].join("\n");
+}
+// A plain title + body link: the GitHub app (which phones open these links in) ignores
+// issue-form fields, and some versions ignore the body too, so Send also copies the body.
+// The label sticks only for people who can label issues; the rest are labeled by hand.
+function checksIssueUrl(cs, csvInBody = true) {
+  const groups = checkGroups(cs);
   const p = new URLSearchParams({
-    template: "field-check.yml",
     title: `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`,
-    summary: [...groups.map(([name, g]) => `- ${groupLine(name, g)}`), ...notes.map(n => `> ${n}`)].join("\n"),
-    rows: csvInBody ? checksCsv(cs) : "(Too long for a link: paste the rows from your clipboard here.)",
-    map: shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" }),
+    body: checksIssueBody(cs, csvInBody),
+    labels: "field-check",
   });
   return `https://github.com/${REPO}/issues/new?${p.toString().replace(/\+/g, "%20")}`;
 }
@@ -891,11 +924,12 @@ document.getElementById("checks-body").addEventListener("click", e => {
   if (b.dataset.checkAction === "copy") copy(checksCsv(cs), "Checks copied as CSV");
   if (b.dataset.checkAction === "send") {
     let url = checksIssueUrl(cs);
-    if (url.length > 7500) { // GitHub refuses very long links: put the rows on the clipboard instead
-      url = checksIssueUrl(cs, false);
-      copy(checksCsv(cs), "Checks copied: paste them into the issue");
-    }
+    if (url.length > 7500) url = checksIssueUrl(cs, false); // GitHub refuses very long links
+    // Copy the full report (even when the link had to leave the rows out) before opening GitHub:
+    // once the new tab has focus, this page can't write the clipboard.
+    navigator.clipboard?.writeText(checksIssueBody(cs)).catch(() => {});
     window.open(url, "_blank", "noopener");
+    toast("Report copied. If GitHub opens an empty issue, paste it in.");
     const day = new Date().toLocaleDateString("en-CA");
     cs.forEach(c => { checks[c.corner_id].sent = day; });
     saveChecks();
@@ -1086,7 +1120,9 @@ document.getElementById("corner-list").addEventListener("click", e => {
 
 document.querySelector('[data-action="log-request"]').addEventListener("click", e => {
   e.preventDefault();
-  window.open(issueUrl(state.corner ? [byId.get(state.corner)] : selectedCorners()), "_blank", "noopener");
+  const url = issueUrl(state.corner ? [byId.get(state.corner)] : selectedCorners());
+  copyIssueBody(url);
+  window.open(url, "_blank", "noopener");
 });
 
 // ------------------------------------------------------------------ GPS: center on me
