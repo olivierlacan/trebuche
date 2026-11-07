@@ -112,9 +112,56 @@ function onHoldText(cs) {
 }
 const needsWork = c => c.overall === "missing" || c.overall === "partial";
 
+// ------------------------------------------------------------------ in-person checks
+// Neighbors can record what they see at a corner. Checks stay in this browser
+// (localStorage, shared by every street's map) until they're sent as a GitHub
+// issue and pasted into data/field-checks.csv, after which build.rb publishes them.
+// A saved check redraws the corner for this visitor right away.
+const CHECKS_KEY = "trebuche:checks";
+const needsOf = c => (c.needs || "").split("+").filter(Boolean);
+const coveredBy = rampsFor => (rampsFor === "none" ? [] : (rampsFor || "").split("+").filter(Boolean));
+function loadChecks() {
+  try { return JSON.parse(localStorage.getItem(CHECKS_KEY)) || {}; } catch { return {}; }
+}
+const checks = loadChecks();
+function saveChecks() {
+  try { localStorage.setItem(CHECKS_KEY, JSON.stringify(checks)); }
+  catch { toast("This browser isn't saving checks (private browsing?). Send them before you close the page."); }
+}
+const ORIGINAL = new Map(corners.map(c => [c.corner_id, {
+  overall: c.overall, confirmed_missing: c.confirmed_missing, missing_crossings: c.missing_crossings,
+  sources_disagree: c.sources_disagree, note: c.note,
+}]));
+// Once the published data has the same check (or a newer one), the local copy has done its job.
+for (const c of corners) {
+  const k = checks[c.corner_id];
+  if (k && c.field_date && c.field_date >= k.date) delete checks[c.corner_id];
+}
+saveChecks();
+const myChecks = () => corners.filter(c => checks[c.corner_id]);
+function applyCheck(c) {
+  Object.assign(c, ORIGINAL.get(c.corner_id));
+  const k = checks[c.corner_id];
+  if (!k) return;
+  const gap = needsOf(c).filter(n => !coveredBy(k.ramps_for).includes(n));
+  c.overall = !gap.length ? "present" : gap.length === needsOf(c).length ? "missing" : "partial";
+  c.confirmed_missing = c.overall === "missing" ? "yes" : "";
+  c.missing_crossings = gap.join("+");
+  c.sources_disagree = "";
+  c.note = "";
+}
+corners.forEach(applyCheck);
+function checkText(c, rampsFor) {
+  const covered = coveredBy(rampsFor);
+  return needsOf(c).map(n => `${covered.includes(n) ? "ramp" : "no ramp"} ${crossingName(c, n)}`).join(", ");
+}
+
 // ------------------------------------------------------------------ evidence wording
 function evidence(c) {
   const out = [];
+  const k = checks[c.corner_id];
+  if (k) out.push(`Checked in person on ${k.date}: ${checkText(c, k.ramps_for)}.${k.notes ? ` ${k.notes}` : ""}`);
+  else if (c.field_date) out.push(`A neighbor checked in person on ${c.field_date}: ${checkText(c, c.field_covers || "none")}.${c.field_notes ? ` ${c.field_notes}` : ""}`);
   if (c.city === "no record") out.push("SDOT's curb ramp inventory has no ramp recorded at this corner.");
   else if (c.city === "unassessed") out.push("SDOT's inventory only has unassessed placeholder records here (no built ramp).");
   else if (c.city === "partial") out.push("SDOT's inventory shows a ramp for one crossing only.");
@@ -173,6 +220,11 @@ function svgFor(k, fill, s, opts = {}) {
   } else {
     parts.push(`<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${fill}" stroke="#fff" stroke-width="2"/>`);
     if (k === "partial") parts.push(cross(0.33, Math.max(2, s * 0.12), false));
+  }
+  if (opts.checked) {
+    const cr = Math.max(4, s * 0.22), cx = s - 1, cy = s - 1;
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${cr}" fill="var(--checked)" stroke="#fff" stroke-width="1.5"/>`,
+      `<path d="M${cx - cr * 0.5},${cy}l${cr * 0.35},${cr * 0.4}l${cr * 0.6},${-cr * 0.75}" fill="none" stroke="#fff" stroke-width="${Math.max(1.5, cr * 0.32)}" stroke-linecap="round" stroke-linejoin="round"/>`);
   }
   if (opts.filed) parts.push(`<circle cx="${s - 1}" cy="1" r="${Math.max(3.5, s * 0.2)}" fill="var(--filed)" stroke="#fff" stroke-width="1.5"/>`);
   if (opts.selected) parts.push(`<rect x="-4" y="-4" width="${s + 8}" height="${s + 8}" rx="4" fill="none" stroke="var(--selected)" stroke-width="2.5"/>`);
@@ -247,6 +299,7 @@ function iconFor(c) {
     className: "m" + (c.corner_id === state.corner ? " current" : ""),
     html: svgFor(kind(c), ageColor(c.city_install_date), s, {
       work: cornerWork(c), filed: !!c.request_filed, selected: state.selected.has(c.corner_id),
+      checked: !!(checks[c.corner_id] || c.field_date),
     }),
     // At least 24 px to tap (WCAG 2.5.8), however small the drawing.
     iconSize: [Math.max(s, 24), Math.max(s, 24)], iconAnchor: [Math.max(s, 24) / 2, Math.max(s, 24) / 2],
@@ -389,13 +442,20 @@ function renderCorner() {
   const selected = state.selected.has(c.corner_id);
   const srcRow = (name, value, extra) => `<tr><th>${name}</th><td>${esc(value)}${extra ? `<br><span class="small">${extra}</span>` : ""}</td></tr>`;
   const wos = (c.work_orders || []).filter(w => workState(w));
+  const mine = checks[c.corner_id];
+  const seen = mine ? coveredBy(mine.ramps_for) : null;
+  const radio = (n, v, label) => `<label class="check"><input type="radio" name="ck-${n}" value="${v}"
+    ${seen && seen.includes(n) === (v === "yes") ? "checked" : ""}> ${label}</label>`;
 
   el.innerHTML = `
     <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
     ${c.corner_type !== "corner" ? `<p class="small">This side of the T-intersection has no side street, so it only needs a ramp for crossing ${MAIN_STREET}.</p>` : ""}
     <p><span class="status ${cls}">${esc(label)}</span>
        ${work ? `<span class="status ${work}">${work === "ongoing" ? "City work this week" : "City work planned"}</span>` : ""}
-       ${c.request_filed ? `<span class="status" style="background:var(--filed)">Request filed</span>` : ""}</p>
+       ${c.request_filed ? `<span class="status" style="background:var(--filed)">Request filed</span>` : ""}
+       ${mine ? `<span class="status" style="background:var(--checked)">You checked this ${esc(mine.date)}</span>`
+         : c.field_date ? `<span class="status" style="background:var(--checked)">Checked in person ${esc(c.field_date)}</span>` : ""}</p>
+    ${mine ? `<p class="small">Shown as you saw it, in this browser only. <button class="link" data-goto="checks">Send your checks</button> so the map is fixed for everyone.</p>` : ""}
     ${needText(c) ? `<p>${esc(needText(c))}</p>` : ""}
     ${c.sources_disagree ? `<p class="small">The sources disagree here${c.note ? `: ${esc(c.note)}` : ""}. Worth a look in person before filing.</p>` : ""}
 
@@ -412,6 +472,21 @@ function renderCorner() {
     ${needsWork(c) ? `<p class="small">On site? <a href="../../ar/?area=${encodeURIComponent(AREA.slug)}&corner=${encodeURIComponent(shortId(c.corner_id))}">See a standard ramp at this corner in AR</a>, to check what's in the way.</p>` : ""}
     <p class="small">Not sure which form? See <button class="link" data-goto="request">How to request</button>.</p>
 
+    <h2>Checked it in person?</h2>
+    <form class="check-form" data-check-form>
+      <p class="small">If the map is wrong here, say what you saw. It's saved in this browser, so you can check
+        several corners and send them all at once from <button class="link" type="button" data-goto="checks">Checks</button>.</p>
+      ${needsOf(c).map(n => `<fieldset><legend>Curb ramp ${esc(crossingName(c, n))}?</legend>
+        ${radio(n, "yes", "Yes, a ramp")}${radio(n, "no", "No ramp (raised curb)")}</fieldset>`).join("")}
+      <label class="field">Note (optional)
+        <input type="text" name="notes" maxlength="200" value="${esc(mine?.notes || "")}"
+          placeholder="e.g. ramp has no yellow warning panel"></label>
+      <div class="buttons">
+        <button class="button primary" type="submit">${mine ? "Update check" : "Save check"}</button>
+        ${mine ? `<button class="button" type="button" data-action="remove-check">Remove my check</button>` : ""}
+      </div>
+    </form>
+
     <h2>What each source says</h2>
     <table class="facts">
       ${srcRow("SDOT inventory", c.city,
@@ -424,6 +499,7 @@ function renderCorner() {
         (c.ps_ramp_issues ? `<br>ramp issues: ${esc(c.ps_ramp_issues)}` : ""))}
       ${srcRow("OpenStreetMap", c.osm, c.osm_kerbs ? esc(c.osm_kerbs.replace(/main:/g, `${AREA.short}: `).replace(/cross:/g, "side street: ").replace(/\?:/g, "")) : "")}
       ${workRows(wos)}
+      ${c.field_date ? srcRow("In person", c.field, `checked ${esc(c.field_date)}${c.field_notes ? `: ${esc(c.field_notes)}` : ""}`) : ""}
       ${c.request_filed ? `<tr><th>Request</th><td>Filed ${esc(c.request_date)} ${esc(c.request_ref)} ${esc(c.request_status)}</td></tr>` : ""}
     </table>
 
@@ -441,6 +517,110 @@ document.getElementById("corner-detail").addEventListener("click", e => {
   if (b.dataset.action === "copy-request") copy(requestText(c), "Request text copied");
   if (b.dataset.action === "copy-link") copy(shareUrl({ corner: shortId(c.corner_id) }), "Link copied");
   if (b.dataset.action === "toggle-select") { toggleSelected(c.corner_id); renderCorner(); }
+  if (b.dataset.action === "remove-check") { setCheck(c, null); toast("Check removed"); }
+});
+document.getElementById("corner-detail").addEventListener("submit", e => {
+  if (!e.target.matches("[data-check-form]")) return;
+  e.preventDefault();
+  const c = byId.get(state.corner), f = new FormData(e.target);
+  const answers = needsOf(c).map(n => [n, f.get(`ck-${n}`)]);
+  if (answers.some(([, v]) => !v)) return toast("Answer yes or no for each crossing");
+  const covered = answers.filter(([, v]) => v === "yes").map(([n]) => n);
+  setCheck(c, {
+    date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local
+    ramps_for: covered.length ? covered.join("+") : "none",
+    notes: String(f.get("notes") || "").trim().replace(/\s+/g, " "),
+  });
+  toast(`Check saved in this browser (${myChecks().length} to send)`);
+});
+
+function setCheck(c, check) {
+  if (check) checks[c.corner_id] = check;
+  else delete checks[c.corner_id];
+  saveChecks();
+  applyCheck(c);
+  refreshMarker(c.corner_id);
+  renderCorner();
+  renderChecks();
+  renderList();
+}
+
+// ------------------------------------------------------------------ checks: review + send
+const csvCell = v => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+function checksCsv(cs) {
+  return ["corner_id,date_checked,ramps_for,notes",
+    ...cs.map(c => { const k = checks[c.corner_id]; return [c.corner_id, k.date, k.ramps_for, k.notes || ""].map(csvCell).join(","); }),
+  ].join("\n");
+}
+function checksIssueUrl(cs, csvInBody = true) {
+  const title = `Checked in person: ${cs.length === 1 ? cornerTitle(cs[0]) : `${cs.length} corners on ${MAIN_STREET}`}`;
+  const body = [
+    "<!-- Please don't include your name, phone, or email. -->",
+    "",
+    `What neighbors saw at ${cs.length === 1 ? "this corner" : "these corners"}, recorded on the map. ` +
+      "Rows go into `data/field-checks.csv` as is.",
+    "",
+    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(The rows were too long for a link: paste them here.)"]),
+    "",
+    ...cs.map(c => `- ${cornerTitle(c)}: ${checkText(c, checks[c.corner_id].ramps_for)}`),
+    "",
+    `Map: ${shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" })}`,
+  ].join("\n");
+  return `https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=field-check`;
+}
+
+function renderChecks() {
+  const cs = myChecks();
+  const count = document.getElementById("checks-count");
+  count.hidden = !cs.length;
+  count.textContent = cs.length;
+  const el = document.getElementById("checks-body");
+  if (!cs.length) {
+    el.innerHTML = `<p>No checks saved in this browser. Open a corner on the map and use <strong>Checked it in person?</strong></p>`;
+    return;
+  }
+  el.innerHTML = `
+    <ul class="checks">${cs.map(c => {
+      const k = checks[c.corner_id];
+      return `<li><button class="link" data-focus-check="${esc(c.corner_id)}">${esc(cornerTitle(c))}</button><br>
+        <span class="small">${esc(k.date)}: ${esc(checkText(c, k.ramps_for))}${k.notes ? `. ${esc(k.notes)}` : ""}
+        ${k.sent ? ` · sent ${esc(k.sent)}` : ""}</span></li>`;
+    }).join("")}</ul>
+    <div class="buttons">
+      <button class="button primary" data-check-action="send">Send ${cs.length === 1 ? "this check" : `these ${cs.length} checks`} on GitHub</button>
+      <button class="button" data-check-action="copy">Copy as CSV</button>
+      <button class="button" data-check-action="forget">Forget all</button>
+    </div>
+    <p class="small">Sending opens a new GitHub issue with your checks filled in (you need a free GitHub account).
+      Once a maintainer adds them to the data, everyone sees the corrected corners and the checks clear here
+      on their own. No GitHub account? Use <strong>Copy as CSV</strong> and send the text to whoever runs this map.</p>`;
+}
+document.getElementById("checks-body").addEventListener("click", e => {
+  const f = e.target.closest("[data-focus-check]");
+  if (f) return selectCorner(f.dataset.focusCheck);
+  const b = e.target.closest("[data-check-action]");
+  if (!b) return;
+  const cs = myChecks();
+  if (b.dataset.checkAction === "copy") copy(checksCsv(cs), "Checks copied as CSV");
+  if (b.dataset.checkAction === "send") {
+    let url = checksIssueUrl(cs);
+    if (url.length > 7500) { // GitHub refuses very long links: put the rows on the clipboard instead
+      url = checksIssueUrl(cs, false);
+      copy(checksCsv(cs), "Checks copied: paste them into the issue");
+    }
+    window.open(url, "_blank", "noopener");
+    const day = new Date().toLocaleDateString("en-CA");
+    cs.forEach(c => { checks[c.corner_id].sent = day; });
+    saveChecks();
+    renderChecks();
+  }
+  if (b.dataset.checkAction === "forget" && confirm(`Forget ${cs.length} check${cs.length > 1 ? "s" : ""} saved in this browser?`)) {
+    cs.forEach(c => { delete checks[c.corner_id]; applyCheck(c); refreshMarker(c.corner_id); });
+    saveChecks();
+    renderChecks();
+    renderList();
+    if (state.corner) renderCorner();
+  }
 });
 
 // ------------------------------------------------------------------ group requests
@@ -577,7 +757,7 @@ function renderList() {
       <div class="chips">${g.map(c => `
         <button class="chip ${state.selected.has(c.corner_id) ? "sel" : ""}" data-focus="${esc(c.corner_id)}"
           aria-label="${esc(cornerTitle(c))}: ${esc(statusLabel(c)[1])}">
-          ${svgFor(kind(c), ageColor(c.city_install_date), 16, { work: null })}${c.corner}</button>`).join("")}
+          ${svgFor(kind(c), ageColor(c.city_install_date), 16, { work: null, checked: !!(checks[c.corner_id] || c.field_date) })}${c.corner}</button>`).join("")}
       </div>
     </div>`).join("");
 }
@@ -598,6 +778,7 @@ document.getElementById("corner-list").addEventListener("click", e => {
     li(svgFor("ramp", mid, 18), `Ramps for both crossings (${counts.ramp})`),
     li(svgFor("q", null, 18), `<strong>Not sure</strong>: one source only, sources disagree, or no data (${counts.q})`),
     li(svgFor("ramp", NO_DATE, 18, { filed: true }), `Green dot: a neighbor has filed a request`),
+    li(svgFor("ramp", NO_DATE, 18, { checked: true }), `Orange check: someone looked in person (yours show as you saw them)`),
     li(svgFor("ramp", NO_DATE, 18, { selected: true }), `Blue box: in your group request`),
   ].join("");
   document.getElementById("ramp-bar").style.background =
@@ -728,5 +909,6 @@ document.addEventListener("click", e => {
 // ------------------------------------------------------------------ boot
 renderGroup();
 renderList();
+renderChecks();
 if (state.corner) renderCorner();
 showTab(state.tab === "corner" && !state.corner ? "key" : state.tab);

@@ -83,6 +83,7 @@ same `data.js` as the map, so they update with the daily refresh.
   which crossing lacks a ramp, the evidence, and a link back to the corner), links to the
   right city form, and **I filed this**.
 - **How to request:** who can use which city channel (below).
+- **Checks:** corners you've checked in person (below), and a button to send them.
 - **Group:** pick corners. The page splits them into packets of at most two intersections
   (SDOT's limit per form), drafts a neighborhood letter, and gives one link to the whole
   selection.
@@ -132,6 +133,7 @@ means SDOT has no install date, which is true for more than half of the ramps.
 | purple dashed ring | SDOT has an open work order here (planned construction or a resident request) |
 | pink ring | SDOT work whose dates overlap the current week (opened on or before this week, estimated done this week or later), or that closed this week |
 | green dot | A neighbor has filed a request (from `data/requests.csv`) |
+| orange check | Someone checked this corner in person (from `data/field-checks.csv`, or your own unsent checks) |
 | blue box | Corner is in your group request |
 | small dots / rings | Every SDOT ramp nearby by install date, and SDOT work orders away from Dayton |
 
@@ -347,6 +349,32 @@ intersection, then to a quadrant.
 - Each corner is placed 9 m diagonally from the intersection center for display.
   Positions are approximate.
 - Before filing a request, check conflicts and partials on the ground (or in Street View).
+
+## Checking corners in person
+
+The sources can be years out of date, so the map lets neighbors record what they see. On
+a corner, **Checked it in person?** asks, for each crossing the corner needs, whether
+there's a ramp, plus an optional note. There's no server: checks are saved in the
+browser (`localStorage`, key `trebuche:checks`, shared by every street's map) and the
+corner is redrawn right away for that visitor, with an orange check. They can check
+several corners on one walk and send them together from the **Checks** tab, which opens
+a prefilled GitHub issue (label `field-check`) with the rows as CSV. If the link would be
+too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV** is
+there for people without a GitHub account.
+
+To publish them, paste the rows into `data/field-checks.csv` and push:
+
+```
+corner_id,date_checked,ramps_for,notes
+dayton-78-NE,2026-11-07,main+cross,
+```
+
+`ramps_for` names the crossings that had a ramp: `main` (crossing the main street),
+`cross` (crossing the side street), `main+cross`, or `none`. The latest check for a
+corner wins over every other source and sets `overall` (a check that finds no ramp
+counts as confirmed missing), unless SDOT recorded work there after the check. The CSV
+gains `field_*` columns. Once the published data has a check as new as a visitor's own,
+the browser drops its copy.
 
 ## Tracking SDOT requests
 

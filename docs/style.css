@@ -10,6 +10,7 @@
   --ongoing: #e0389a;
   --filed: #138a72;
   --selected: #1f5fae;
+  --checked: #c2410c;
   --panel-w: 400px;
 }
 @media (prefers-color-scheme: dark) {
@@ -61,6 +62,15 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .tabs .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px; border-radius: 9px;
   background: var(--selected); color: #fff; font-size: 11px; text-align: center; }
+.tabs .count.checks { background: var(--checked); }
+.check-form fieldset { border: 0; padding: 0; margin: 8px 0; }
+.check-form legend { font-weight: 600; font-size: 14px; padding: 0; }
+.check-form .check { margin: 2px 0; }
+.check-form .field { display: block; font-size: 14px; margin: 8px 0; }
+.check-form .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.checks { list-style: none; padding: 0; margin: 8px 0; }
+.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
 
 .lede { margin: 14px 0 4px; }
 .small { font-size: 13px; color: var(--muted); }

@@ -38,6 +38,7 @@
       <button role="tab" id="tab-corner" aria-controls="pane-corner" data-tab="corner">Corner</button>
       <button role="tab" id="tab-request" aria-controls="pane-request" data-tab="request">How to request</button>
       <button role="tab" id="tab-group" aria-controls="pane-group" data-tab="group">Group <span class="count" id="sel-count" hidden></span></button>
+      <button role="tab" id="tab-checks" aria-controls="pane-checks" data-tab="checks">Checks <span class="count checks" id="checks-count" hidden></span></button>
       <button role="tab" id="tab-list" aria-controls="pane-list" data-tab="list">All corners</button>
     </nav>
 
@@ -147,6 +148,15 @@
         <li><strong>Speak at a public meeting.</strong> SDOT's <a href="https://www.seattle.gov/transportation/projects-and-programs/programs/ada-program/pedestrian-access-advisory-committee">Pedestrian Access Advisory Committee</a> and the <a href="https://www.seattle.gov/seattle-pedestrian-advisory-board">Seattle Pedestrian Advisory Board</a> take public comment.</li>
         <li id="on-hold-tip"></li>
       </ul>
+    </section>
+
+    <!-- In-person checks -->
+    <section role="tabpanel" id="pane-checks" aria-labelledby="tab-checks" hidden>
+      <p class="lede">Corners you've checked in person. The sources behind this map can be years old,
+        so what you see on the street is the best evidence there is.</p>
+      <div id="checks-body"></div>
+      <p class="small">Checks stay in this browser on this device until you send them. Nothing is sent
+        anywhere until you do, and your location isn't included.</p>
     </section>
 
     <!-- List -->
