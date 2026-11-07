@@ -155,13 +155,32 @@ function checkText(c, rampsFor) {
   const covered = coveredBy(rampsFor);
   return needsOf(c).map(n => `${covered.includes(n) ? "ramp" : "no ramp"} ${crossingName(c, n)}`).join(", ");
 }
+// What's wrong with ramps that are there. Stored as "no_warning+old_style" (ramp_issues column).
+const RAMP_ISSUES = {
+  no_warning: ["No yellow warning panel (raised bumps)", "no yellow warning panel"],
+  old_style: ["Older style: crisscross grooves on the ramp", "older style with crisscross grooves"],
+  damaged: ["Cracked, broken or uneven", "cracked, broken or uneven"],
+  lip: ["Lip or bump at the street edge", "lip at the street edge"],
+};
+const issueList = v => (v || "").split("+").filter(k => RAMP_ISSUES[k]);
+const issuesText = v => issueList(v).map(k => RAMP_ISSUES[k][1]).join(", ");
+// The ramp issues that apply to a corner: your own check first, then the published one.
+const rampIssues = c => (checks[c.corner_id] ? checks[c.corner_id].issues : c.field_issues) || "";
+function upgradeText(c) {
+  if (!issuesText(rampIssues(c)) || c.overall === "missing") return "";
+  const plural = c.overall === "present" && needsOf(c).length > 1;
+  const what = issuesText(rampIssues(c));
+  return `The existing ramp${plural ? "s here: " : " here: "}${what}.` + (issueList(rampIssues(c)).includes("no_warning")
+    ? " Without the warning panel, people who are blind or have low vision can't tell where the sidewalk ends." : "");
+}
 
 // ------------------------------------------------------------------ evidence wording
 function evidence(c) {
   const out = [];
   const k = checks[c.corner_id];
-  if (k) out.push(`Checked in person on ${k.date}: ${checkText(c, k.ramps_for)}.${k.notes ? ` ${k.notes}` : ""}`);
-  else if (c.field_date) out.push(`A neighbor checked in person on ${c.field_date}: ${checkText(c, c.field_covers || "none")}.${c.field_notes ? ` ${c.field_notes}` : ""}`);
+  const iss = s => (issuesText(s) ? ` Ramp condition: ${issuesText(s)}.` : "");
+  if (k) out.push(`Checked in person on ${k.date}: ${checkText(c, k.ramps_for)}.${iss(k.issues)}${k.notes ? ` ${k.notes}` : ""}`);
+  else if (c.field_date) out.push(`A neighbor checked in person on ${c.field_date}: ${checkText(c, c.field_covers || "none")}.${iss(c.field_issues)}${c.field_notes ? ` ${c.field_notes}` : ""}`);
   if (c.city === "no record") out.push("SDOT's curb ramp inventory has no ramp recorded at this corner.");
   else if (c.city === "unassessed") out.push("SDOT's inventory only has unassessed placeholder records here (no built ramp).");
   else if (c.city === "partial") out.push("SDOT's inventory shows a ramp for one crossing only.");
@@ -188,7 +207,9 @@ function shareUrl(params) {
 function requestText(c) {
   const lines = [
     `Location: ${cornerTitle(c)}, Seattle, WA (${c.lat}, ${c.lon})`,
-    `Request: ${c.overall === "present" ? "Please check this corner's curb ramps." : "Please install curb ramps at this corner. " + needText(c)}`,
+    `Request: ${c.overall === "present"
+      ? (upgradeText(c) ? `Please upgrade this corner's curb ramps to current standards. ${upgradeText(c)}` : "Please check this corner's curb ramps.")
+      : `Please install curb ramps at this corner. ${needText(c)}${upgradeText(c) ? ` ${upgradeText(c)} Please upgrade it too.` : ""}`}`,
     "",
     "What we know:",
     ...evidence(c).map(e => `- ${e}`),
@@ -445,6 +466,7 @@ function renderCorner() {
   const mine = checks[c.corner_id];
   const here = intersectionCorners(c);
   const noteNow = here.map(x => checks[x.corner_id]?.notes).find(Boolean) || "";
+  const issuesNow = here.map(x => checks[x.corner_id]?.issues).find(Boolean) || "";
 
   el.innerHTML = `
     <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
@@ -456,6 +478,7 @@ function renderCorner() {
          : c.field_date ? `<span class="status" style="background:var(--checked)">Checked in person ${esc(c.field_date)}</span>` : ""}</p>
     ${mine ? `<p class="small">Shown as you saw it, in this browser only. <button class="link" data-goto="checks">Send your checks</button> so the map is fixed for everyone.</p>` : ""}
     ${needText(c) ? `<p>${esc(needText(c))}</p>` : ""}
+    ${upgradeText(c) ? `<p><span class="status upgrade">Needs upgrade</span> ${esc(upgradeText(c))}</p>` : ""}
     ${c.sources_disagree ? `<p class="small">The sources disagree here${c.note ? `: ${esc(c.note)}` : ""}. Worth a look in person before filing.</p>` : ""}
 
     <div class="buttons">
@@ -486,6 +509,11 @@ function renderCorner() {
         <button class="button" type="button" data-fill="ramps">All have ramps</button>
         <button class="button" type="button" data-fill="none">None have ramps</button>
       </div>
+      <fieldset class="issues"><legend>The ramps that are there (check any that apply)</legend>
+        ${Object.entries(RAMP_ISSUES).map(([k, [label]]) => `<label class="check"><input type="checkbox" name="issue" value="${k}"
+          ${issueList(issuesNow).includes(k) ? "checked" : ""}> ${esc(label)}</label>`).join("")}
+        <p class="small">Applies to every corner above that has a ramp. If corners differ, say so in the note.</p>
+      </fieldset>
       <label class="field">Note (optional)
         <input type="text" name="notes" maxlength="200" value="${esc(noteNow)}"
           placeholder="e.g. new ramps, no yellow warning panel at SW"></label>
@@ -538,6 +566,7 @@ document.getElementById("corner-detail").addEventListener("submit", e => {
   e.preventDefault();
   const f = new FormData(e.target), date = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
   const notes = String(f.get("notes") || "").trim().replace(/\s+/g, " ");
+  const allIssues = f.getAll("issue").join("+");
   let saved = 0;
   for (const x of intersectionCorners(byId.get(state.corner))) {
     const v = f.get(x.corner_id);
@@ -545,9 +574,9 @@ document.getElementById("corner-detail").addEventListener("submit", e => {
     else {
       const old = checks[x.corner_id];
       // Re-saving the same answer keeps its date and "sent" mark.
-      const fix = onSite(x);
-      checks[x.corner_id] = old && old.ramps_for === v && (old.notes || "") === notes && (!fix || old.distance_ft)
-        ? old : { date, ramps_for: v, notes, ...fix };
+      const fix = onSite(x), issues = v === "none" ? "" : allIssues;
+      checks[x.corner_id] = old && old.ramps_for === v && (old.notes || "") === notes && (old.issues || "") === issues &&
+        (!fix || old.distance_ft) ? old : { date, ramps_for: v, issues, notes, ...fix };
       saved++;
     }
     applyCheck(x);
@@ -608,10 +637,10 @@ function checkOptions(c) {
 // ------------------------------------------------------------------ checks: review + send
 const csvCell = v => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 function checksCsv(cs) {
-  return ["corner_id,date_checked,ramps_for,notes,distance_ft,accuracy_ft",
+  return ["corner_id,date_checked,ramps_for,ramp_issues,notes,distance_ft,accuracy_ft",
     ...cs.map(c => {
       const k = checks[c.corner_id];
-      return [c.corner_id, k.date, k.ramps_for, k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
+      return [c.corner_id, k.date, k.ramps_for, k.issues || "", k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
     }),
   ].join("\n");
 }
@@ -624,8 +653,10 @@ function intersectionSummary(cs) {
     byAnswer.set(label, [...(byAnswer.get(label) || []), c.corner]);
   }
   const total = intersectionCorners(cs[0]).length;
+  const issues = [...new Set(cs.map(c => issuesText(checks[c.corner_id].issues)).filter(Boolean))];
   return [...byAnswer].map(([label, where]) =>
-    `${label} ${where.length === total && total > 1 ? `at all ${total} corners` : `at ${where.join(", ")}`}`).join("; ");
+    `${label} ${where.length === total && total > 1 ? `at all ${total} corners` : `at ${where.join(", ")}`}`).join("; ") +
+    (issues.length ? `; ramps: ${issues.join("; ")}` : "");
 }
 const checkGroups = cs => groupByIntersection(cs).map(g => [`${MAIN_STREET} & ${baseStreet(g[0])}`, g]);
 

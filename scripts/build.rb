@@ -457,7 +457,9 @@ end
 # Checks neighbors made in person (data/field-checks.csv, pasted from the map's
 # "Send checks" GitHub issues): which crossings had a ramp on the day.
 # ramps_for is "main", "cross", "main+cross" or "none". The latest check per corner wins.
-# distance_ft and accuracy_ft (phone location when saved) are kept for review, not used here.
+# ramp_issues says what's wrong with the ramps that are there ("no_warning+old_style";
+# also "damaged", "lip"). distance_ft and accuracy_ft (phone location when saved) are
+# kept for review, not used here.
 def load_field_checks
   path = File.join(ROOT, "data", "field-checks.csv")
   return {} unless File.exist?(path)
@@ -481,6 +483,7 @@ def apply_field_check(row, check, needs)
   status, covers, gap = field_verdict(check, needs)
   date = check["date_checked"].to_s
   row.merge!("field" => status, "field_covers" => covers, "field_date" => date,
+             "field_issues" => status == "missing" ? "" : check["ramp_issues"].to_s,
              "field_notes" => check["notes"].to_s)
   city_seen = row["city_last_observed"].to_s
   return false if !city_seen.empty? && city_seen > date
@@ -511,7 +514,7 @@ FIELDS = %w[
   ps ps_ramp_labels ps_noramp_labels ps_validated
   ps_ramp_max_severity ps_ramp_issues ps_image_date ps_label_ids
   osm osm_kerbs osm_last_edit osm_node_ids
-  field field_covers field_date field_notes
+  field field_covers field_date field_issues field_notes
   request_filed request_date request_ref request_status
 ].freeze
 

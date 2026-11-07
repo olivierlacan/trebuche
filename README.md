@@ -355,7 +355,9 @@ intersection, then to a quadrant.
 The sources can be years out of date, so the map lets neighbors record what they see.
 On any corner, **Checked it in person?** covers the whole intersection: one dropdown per
 corner (ramps both ways, a ramp for one crossing only, no ramps, or not checked), **All
-have ramps** / **None have ramps** shortcuts, and one note. There's no server: checks
+have ramps** / **None have ramps** shortcuts, checkboxes for what's wrong with the ramps
+that are there (no yellow warning panel, the older style with crisscross grooves,
+cracked or uneven, a lip at the street edge), and one note. There's no server: checks
 are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
 street's map) and the corners are redrawn right away for that visitor, with an orange
 check. With location on (the locate button), the form says whether the phone is at the
@@ -373,14 +375,19 @@ is there for people without a GitHub account.
 To publish them, paste the rows into `data/field-checks.csv` and push:
 
 ```
-corner_id,date_checked,ramps_for,notes,distance_ft,accuracy_ft
-dayton-78-NE,2026-11-07,main+cross,,15,20
+corner_id,date_checked,ramps_for,ramp_issues,notes,distance_ft,accuracy_ft
+dayton-78-NE,2026-11-07,main+cross,,,15,20
+dayton-83-NW,2026-11-07,cross,no_warning+old_style,,,
 ```
 
 `ramps_for` names the crossings that had a ramp: `main` (crossing the main street),
 `cross` (crossing the side street), `main+cross`, or `none`. The latest check for a
 corner wins over every other source and sets `overall` (a check that finds no ramp
 counts as confirmed missing), unless SDOT recorded work there after the check.
+`ramp_issues` lists what's wrong with the ramps that are there, joined with `+`:
+`no_warning` (no detectable warning panel, Standard Plan 422k), `old_style` (crisscross
+grooves), `damaged`, `lip`. Corners with any of them say **Needs upgrade**, and their
+request text asks SDOT to upgrade the ramp as well as add any missing one.
 `distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
 doesn't use them yet, they're there for whoever reviews the issue. The CSV
 gains `field_*` columns. Once the published data has a check as new as a visitor's own,

@@ -24,7 +24,7 @@ body:
     id: rows
     attributes:
       label: Rows for data/field-checks.csv
-      description: Filled in by the map. corner_id, date_checked, ramps_for (main, cross, main+cross or none), notes, and how far the phone was from the corner when the check was saved.
+      description: Filled in by the map. corner_id, date_checked, ramps_for (main, cross, main+cross or none), ramp_issues (no_warning, old_style, damaged, lip), notes, and how far the phone was from the corner when the check was saved.
       render: csv
   - type: input
     id: map

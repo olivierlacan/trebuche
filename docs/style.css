@@ -64,6 +64,7 @@ h3 { font-size: 16px; margin: 0 0 4px; }
   background: var(--selected); color: #fff; font-size: 11px; text-align: center; }
 .tabs .count.checks { background: var(--checked); }
 .check-form fieldset { border: 0; padding: 0; margin: 8px 0; }
+.check-form fieldset.issues .small { margin: 4px 0 0; }
 .check-form legend { font-weight: 600; font-size: 14px; padding: 0; }
 .check-form .check { margin: 2px 0; }
 .check-form .field { display: block; font-size: 14px; margin: 8px 0; }
@@ -71,7 +72,7 @@ h3 { font-size: 16px; margin: 0 0 4px; }
   border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .check-grid { border-collapse: collapse; margin: 6px 0; width: 100%; }
 .check-grid th { text-align: left; font-size: 14px; width: 3.2em; padding: 4px 6px 4px 0; }
-.check-grid tr.here th { color: var(--checked); }
+.check-grid tr.here th { text-decoration: underline 3px var(--checked); text-underline-offset: 4px; }
 .check-grid select { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; border: 1px solid var(--line);
   border-radius: 6px; background: var(--bg); color: var(--fg); }
 ul.checks { list-style: none; padding: 0; margin: 8px 0; }
@@ -106,6 +107,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .status { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 13px; color: #fff; font-weight: 600; }
 .status.missing { background: #222; }
 .status.partial { background: #b2651a; }
+.status.upgrade { background: #8a6d00; }
 .status.present { background: #1a8a4a; }
 .status.unsure { background: #6b6b6b; }
 .status.planned { background: var(--planned); }
