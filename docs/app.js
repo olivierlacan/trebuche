@@ -208,15 +208,18 @@ function reportIcon(kind, c, n) {
     body = rampPlan({ extra: `<path d="M11.5,8.5l2.5,3l-2,2.5l4,2.5" fill="none" stroke="${ICON.ink}" stroke-width="1.4" stroke-linejoin="round"/>
       <path d="M19,9.5l1.5,3l2,1" fill="none" stroke="${ICON.ink}" stroke-width="1"/>` });
   } else if (kind === "lip") {
-    // Elevation: a pair of feet walking up from the street, the front toe stopped by the
-    // step where the ramp meets the gutter (red), the back heel lifting.
+    // Elevation, cropped at the shins: someone walking up from the street, the front toe
+    // stopped by the step where the ramp meets the gutter (red), the back heel lifting,
+    // both legs pitching forward. Back leg and shoe lighter, for depth.
     const shoe = fill => `<path d="M11,0H2C.4,0 -.3,-1 0,-2.2C.4,-3.6 2.2,-4 4.2,-4.3L7.4,-5.2C8.4,-6.6 9.7,-7 11,-7Z" fill="${fill}"/>
-      <path d="M10.6,-.9H.8" stroke="#fff" stroke-width=".9" opacity=".75"/><path d="M8.8,-6.6L9.6,-15" stroke="${fill}" stroke-width="4.2"/>`;
+      <path d="M10.6,-.9H.8" stroke="#fff" stroke-width=".9" opacity=".75"/>`;
     body = `<rect width="32" height="32" fill="#eef0f2"/>
       <path d="M0,19L8,23V27H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
       <rect x="8" y="27" width="24" height="5" fill="${ICON.street}"/>
       <path d="M8,22.6V27.4" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M23.4,19L16.5,-1" stroke="#7d93b3" stroke-width="5"/>
       <g transform="translate(19.5,27) rotate(-28) scale(.9)">${shoe("#6d6d6d")}</g>
+      <path d="M16.4,21.8L12,-1" stroke="#3d5a80" stroke-width="5"/>
       <g transform="translate(8.2,27) scale(.9)">${shoe(ICON.ink)}</g>
       <path d="M5,17.5l-2.4,-1.2M5.8,15.1l-1.2,-2.3M8.2,14.3l-.1,-2.6" stroke="${ICON.ink}" stroke-width="1.1" stroke-linecap="round"/>`;
   }
