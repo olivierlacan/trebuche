@@ -162,6 +162,7 @@ function checkText(c, rampsFor) {
 // What's wrong with ramps that are there. Stored as "no_warning+old_style" (ramp_issues column).
 // [checkbox label, words in sentences]
 const RAMP_ISSUES = {
+  diagonal: ["Central ramp facing the middle of the intersection", "one central ramp aimed at the middle of the intersection"],
   no_warning: ["No yellow pad", "no yellow pad"],
   old_style: ["Older crisscross style", "older crisscross style"],
   damaged: ["Cracked or uneven", "cracked or uneven"],
@@ -198,6 +199,19 @@ function reportIcon(kind, c, n) {
       <line x1="0" x2="32" y1="${curbY}" y2="${curbY}" stroke="${ICON.edge}" stroke-width="1.2"/>
       <path d="M12.5,${xy - 3.5}L19.5,${xy + 3.5}M19.5,${xy - 3.5}L12.5,${xy + 3.5}" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>`;
     if (n === "main") body = `<g transform="rotate(90 16 16)">${body}</g>`;
+  } else if (kind === "diagonal") {
+    // A corner from above (sidewalk in the corner's quarter, streets on the other two
+    // sides, a crosswalk across each), with one ramp at the curve aimed at the middle of
+    // the intersection, between the crosswalks. Drawn for NW, turned for the others.
+    const turn = { NW: 0, NE: 90, SE: 180, SW: 270 }[c.corner] || 0;
+    const bars = [19, 23, 27].map(x => `<rect x="${x}" y="2" width="2" height="10" fill="#fff" opacity=".85"/>`).join("") +
+      [19, 23, 27].map(y => `<rect x="2" y="${y}" width="10" height="2" fill="#fff" opacity=".85"/>`).join("");
+    body = `<g transform="rotate(${turn} 16 16)"><rect width="32" height="32" fill="${ICON.street}"/>${bars}
+      <path d="M0,0H17V6A11,11 0 0 1 6,17H0Z" fill="${ICON.walk}" stroke="${ICON.edge}" stroke-width=".9"/>
+      <path d="M9.3,8.3L16.6,8.85A11,11 0 0 1 8.85,16.6L8.3,9.3Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".6"/>
+      <path d="M14.26,8.67L16.6,8.85A11,11 0 0 1 8.85,16.6L8.67,14.26A8.7,8.7 0 0 0 14.26,8.67Z" fill="${ICON.pad}"/>
+      <path d="M17.5,17.5L25,25" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.4 2"/>
+      <path d="M26.6,21.4V26.6H21.4" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>`;
   } else if (kind === "no_warning") {
     body = rampPlan({ pad: false });
   } else if (kind === "old_style") {
@@ -230,11 +244,18 @@ const issuesText = v => issueList(v).map(k => RAMP_ISSUES[k][1]).join(", ");
 const checkIssues = k => issueList(k.issues).join("+");
 const rampIssues = c => (checks[c.corner_id] ? checkIssues(checks[c.corner_id]) : c.field_issues) || "";
 function upgradeText(c) {
-  if (!issuesText(rampIssues(c)) || c.overall === "missing") return "";
+  const list = issueList(rampIssues(c));
+  if (!list.length || c.overall === "missing") return "";
   const plural = c.overall === "present" && needsOf(c).length > 1;
-  const what = issuesText(rampIssues(c));
-  return `The existing ramp${plural ? "s here: " : " here: "}${what}.` + (issueList(rampIssues(c)).includes("no_warning")
-    ? " Without the yellow pad (detectable warning panel), people who are blind or have low vision can't tell where the sidewalk ends." : "");
+  const diagonal = list.includes("diagonal"), rest = list.filter(i => i !== "diagonal").map(i => RAMP_ISSUES[i][1]);
+  // Shared diagonal ramps (Standard Plan 422F) are still built where corners are tight, so
+  // this says what the ramp does, not that it was built wrong.
+  let text = diagonal ? "The corner has one ramp on its curve, aimed at the middle of the intersection rather than " +
+    "lined up with either crosswalk, so people coming down it head toward the middle of the street. " +
+    "A ramp lined up with each crosswalk would fix that." : "";
+  if (rest.length) text += `${diagonal ? " The ramp also has: " : `The existing ramp${plural ? "s here: " : " here: "}`}${rest.join(", ")}.`;
+  if (list.includes("no_warning")) text += " Without the yellow pad (detectable warning panel), people who are blind or have low vision can't tell where the sidewalk ends.";
+  return text.trim();
 }
 
 // ------------------------------------------------------------------ evidence wording
@@ -469,6 +490,19 @@ async function copy(text, what = "Copied") {
   }
   toast(what);
 }
+
+// Phones often open GitHub links in the GitHub app, which can drop a prefilled body.
+// Copy it first (while this page still has focus) so it's one paste away.
+function copyIssueBody(url) {
+  const body = new URL(url).searchParams.get("body");
+  if (!body) return;
+  navigator.clipboard?.writeText(body).catch(() => {});
+  toast("Issue text copied. If GitHub opens an empty issue, paste it in.");
+}
+document.addEventListener("click", e => {
+  const a = e.target.closest(`a[href^="https://github.com/${REPO}/issues/new"]`);
+  if (a) copyIssueBody(a.href);
+});
 
 function issueUrl(cs) {
   const ids = cs.map(c => c.corner_id);
@@ -749,11 +783,21 @@ function checkDiagram(c) {
       <rect x="${west ? 2 : B + 2}" y="${north ? 2 : B + 2}" width="${A - 4}" height="${A - 4}" rx="6"
         fill="${k ? "var(--checked-soft)" : "transparent"}" ${current ? 'stroke="var(--checked)" stroke-width="3"' : ""}/>
       <text x="${west ? A / 2 : B + A / 2}" y="${north ? A / 2 : B + A / 2}" dy=".35em" text-anchor="middle" class="corner-name">${x.corner}</text></g>`);
+    const diagonal = issueList(k?.issues).includes("diagonal");
+    if (diagonal && covered.length) {
+      // one ramp at the apex, aimed at the middle of the intersection
+      const ax = cx + sx * 12, ay = cy + sy * 12, turn = sx === sy ? -45 : 45;
+      parts.push(`<rect x="${ax - 8}" y="${ay - 4}" width="16" height="8" transform="rotate(${turn} ${ax} ${ay})"
+        fill="${noPad ? "#9a9a9a" : "#f2c200"}" stroke="var(--fg)" stroke-width="1"/>`);
+    }
     for (const n of needsOf(x)) {
+      if (diagonal && k && covered.includes(n)) continue; // the apex ramp stands in for it
       // ramp for crossing the side street sits on its curb; for crossing the main street, on the main street's curb
       const [w, h] = n === "cross" ? [22, 9] : [9, 22];
-      const rx = n === "cross" ? cx + sx * 8 + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -w : 0);
-      const ry = n === "cross" ? cy + (sy < 0 ? -h : 0) : cy + sy * 8 + (sy < 0 ? -h : 0);
+      // with a central ramp at the apex, slide the other marks along the curb to clear it
+      const slide = diagonal ? 12 : 0;
+      const rx = n === "cross" ? cx + sx * (8 + slide) + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -w : 0);
+      const ry = n === "cross" ? cy + (sy < 0 ? -h : 0) : cy + sy * (8 + slide) + (sy < 0 ? -h : 0);
       if (!k) {
         parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="none" stroke="var(--muted)" stroke-dasharray="3 2"/>`);
       } else if (!covered.includes(n)) {
@@ -786,8 +830,10 @@ function cornerDescription(c, k) {
   const covered = coveredBy(k.ramps_for), need = needsOf(c);
   if (!covered.length) return need.length > 1 ? "no ramps" : "no ramp";
   const miss = need.filter(n => !covered.includes(n));
-  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : need.length > 1 ? "ramps both ways" : "ramp",
-    ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].join(", ");
+  // A central ramp stands in for "ramps both ways": saying both would contradict itself.
+  const central = issueList(k.issues).includes("diagonal");
+  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : central ? "" : need.length > 1 ? "ramps both ways" : "ramp",
+    ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].filter(Boolean).join(", ");
 }
 function intersectionSummary(cs) {
   const byAnswer = new Map();
@@ -803,19 +849,39 @@ const checkGroups = cs => groupByIntersection(cs).map(g => [`${MAIN_STREET} & ${
 
 const ON_SITE_FT = 300;
 const onSiteGroup = g => g.some(c => checks[c.corner_id].distance_ft != null && checks[c.corner_id].distance_ft < ON_SITE_FT);
-const groupLine = (name, g) => `${name}: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`;
 
 // Opens .github/ISSUE_TEMPLATE/field-check.yml with every field filled in: each
 // field's id is a query parameter.
-function checksIssueUrl(cs, csvInBody = true) {
+// The whole report as Markdown: the issue's body, and what Send copies to the clipboard.
+function checksIssueBody(cs, csvInBody = true) {
   const groups = checkGroups(cs);
   const notes = [...new Set(cs.map(c => checks[c.corner_id].notes).filter(Boolean))];
+  return [
+    "<!-- Please don't include your name, phone, or email. -->",
+    "",
+    ...groups.map(([name, g]) => `- **${name}**: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`),
+    ...(notes.length ? ["", ...notes.map(n => `> ${n}`)] : []),
+    "",
+    "### Photos (optional)",
+    "",
+    "Drag photos of the corners here, or attach them from your phone.",
+    "",
+    "### Rows for `data/field-checks.csv`",
+    "",
+    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(Too long for a link: paste the rows from your clipboard here.)"]),
+    "",
+    `Map: ${shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" })}`,
+  ].join("\n");
+}
+// A plain title + body link: the GitHub app (which phones open these links in) ignores
+// issue-form fields, and some versions ignore the body too, so Send also copies the body.
+// The label sticks only for people who can label issues; the rest are labeled by hand.
+function checksIssueUrl(cs, csvInBody = true) {
+  const groups = checkGroups(cs);
   const p = new URLSearchParams({
-    template: "field-check.yml",
     title: `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`,
-    summary: [...groups.map(([name, g]) => `- ${groupLine(name, g)}`), ...notes.map(n => `> ${n}`)].join("\n"),
-    rows: csvInBody ? checksCsv(cs) : "(Too long for a link: paste the rows from your clipboard here.)",
-    map: shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" }),
+    body: checksIssueBody(cs, csvInBody),
+    labels: "field-check",
   });
   return `https://github.com/${REPO}/issues/new?${p.toString().replace(/\+/g, "%20")}`;
 }
@@ -858,11 +924,12 @@ document.getElementById("checks-body").addEventListener("click", e => {
   if (b.dataset.checkAction === "copy") copy(checksCsv(cs), "Checks copied as CSV");
   if (b.dataset.checkAction === "send") {
     let url = checksIssueUrl(cs);
-    if (url.length > 7500) { // GitHub refuses very long links: put the rows on the clipboard instead
-      url = checksIssueUrl(cs, false);
-      copy(checksCsv(cs), "Checks copied: paste them into the issue");
-    }
+    if (url.length > 7500) url = checksIssueUrl(cs, false); // GitHub refuses very long links
+    // Copy the full report (even when the link had to leave the rows out) before opening GitHub:
+    // once the new tab has focus, this page can't write the clipboard.
+    navigator.clipboard?.writeText(checksIssueBody(cs)).catch(() => {});
     window.open(url, "_blank", "noopener");
+    toast("Report copied. If GitHub opens an empty issue, paste it in.");
     const day = new Date().toLocaleDateString("en-CA");
     cs.forEach(c => { checks[c.corner_id].sent = day; });
     saveChecks();
@@ -1053,7 +1120,9 @@ document.getElementById("corner-list").addEventListener("click", e => {
 
 document.querySelector('[data-action="log-request"]').addEventListener("click", e => {
   e.preventDefault();
-  window.open(issueUrl(state.corner ? [byId.get(state.corner)] : selectedCorners()), "_blank", "noopener");
+  const url = issueUrl(state.corner ? [byId.get(state.corner)] : selectedCorners());
+  copyIssueBody(url);
+  window.open(url, "_blank", "noopener");
 });
 
 // ------------------------------------------------------------------ GPS: center on me

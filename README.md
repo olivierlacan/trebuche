@@ -355,9 +355,11 @@ intersection, then to a quadrant.
 The sources can be years out of date, so the map lets neighbors record what they see.
 Reports go one corner at a time, the corner open in the panel. Under its status, **Report
 what's here** opens a short checklist for that corner: **No ramp to cross** each street
-it needs a ramp for, **No yellow pad**, **Older crisscross style**, **Cracked or uneven**
-and **Lip at street edge**, each with a small drawing of what to look for (the missing-ramp
-ones show the street to cross and which curb, turned to match the corner). Each tick is
+it needs a ramp for, **Central ramp facing the middle of the intersection** (one ramp at
+the apex instead of one lined up with each crosswalk), **No yellow pad**, **Older
+crisscross style**, **Cracked or uneven** and **Lip at street edge**, each with a small
+drawing of what to look for (the missing-ramp and central-ramp ones are turned to match
+the corner). Each tick is
 saved right away. **Nothing wrong here** records
 a good corner in one tap, and **Same as NW** (the last corner reported at that
 intersection) copies it, so Dayton & N 83rd St, where all four corners have the same
@@ -372,14 +374,18 @@ check. With location on (the locate button), the panel says whether the phone is
 intersection on screen, offers to switch if it's at a different one, opens the report
 when you reach the open corner, and each check
 records how far the phone was from its corner and how precise the fix was (never the
-position itself). A whole walk can go out at once from the **Checks** tab, which opens
-the `.github/ISSUE_TEMPLATE/field-check.yml` issue form (label `field-check`) with every
-field filled in from query parameters (`template=field-check.yml&summary=…&rows=…&map=…`):
+position itself). A whole walk can go out at once from the **Checks** tab, which opens a
+new GitHub issue with its title and body filled in from the link (`title=…&body=…&labels=field-check`):
 one line per intersection ("ramps both ways at all 4 corners (phone location on site)"),
-a Photos field to drag pictures into (GitHub hosts them; a link can't attach files, so
-this is the one manual step), and the rows as CSV. If the link would
-be too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV**
-is there for people without a GitHub account.
+a Photos section to drag pictures into (GitHub hosts them; a link can't attach files, so
+this is the one manual step), the rows as CSV, and a map link. On phones the link often
+opens in the GitHub app, which ignores a prefilled body, so **Send** also copies the whole
+report: if the issue comes up empty, paste. (**I filed this** and **We filed these** copy
+their text the same way.) If the link would be too long for GitHub, the rows are left out
+of it and only the clipboard has them. The label sticks only for people who can label
+issues in the repository. `.github/ISSUE_TEMPLATE/field-check.yml` is the same report as an
+issue form, for people who start from GitHub's **New issue**. **Copy as CSV** is there for
+people without a GitHub account.
 
 To publish them, paste the rows into `data/field-checks.csv` and push:
 
@@ -394,8 +400,10 @@ dayton-83-NW,2026-11-07,cross,no,old_style,,,
 corner wins over every other source and sets `overall` (a check that finds no ramp
 counts as confirmed missing), unless SDOT recorded work there after the check.
 `yellow_pad` is `yes`, `no` or blank (not noted). `ramp_issues` lists anything else
-wrong with the ramps, joined with `+`: `old_style` (crisscross grooves), `damaged`,
-`lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
+wrong with the ramps, joined with `+`: `diagonal` (one central ramp at the apex, aimed at
+the middle of the intersection instead of lined up with each crosswalk, like Standard Plan
+422F; it still counts as a ramp for the crossings it serves), `old_style` (crisscross
+grooves), `damaged`, `lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
 request text asks SDOT to upgrade the ramp as well as add any missing one.
 `distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
 doesn't use them yet, they're there for whoever reviews the issue. The CSV

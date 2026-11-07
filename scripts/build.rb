@@ -458,7 +458,7 @@ end
 # "Send checks" GitHub issues): which crossings had a ramp on the day.
 # ramps_for is "main", "cross", "main+cross" or "none". The latest check per corner wins.
 # yellow_pad is "yes", "no" or blank: whether the ramps have a detectable warning panel.
-# ramp_issues says what else is wrong with them ("old_style", "damaged", "lip", joined
+# ramp_issues says what else is wrong with them ("diagonal", "old_style", "damaged", "lip", joined
 # with "+"); a "no" yellow_pad adds "no_warning" to field_issues. distance_ft and accuracy_ft (phone location when saved) are
 # kept for review, not used here.
 def load_field_checks
