@@ -356,7 +356,9 @@ The sources can be years out of date, so the map lets neighbors record what they
 Reports go one corner at a time, the corner open in the panel. Under its status, **Report
 what's here** opens a short checklist for that corner: **No ramp to cross** each street
 it needs a ramp for, **No yellow pad**, **Older crisscross style**, **Cracked or uneven**
-and **Lip at street edge**. Each tick is saved right away. **Nothing wrong here** records
+and **Lip at street edge**, each with a small drawing of what to look for (the missing-ramp
+ones show the street to cross and which curb, turned to match the corner). Each tick is
+saved right away. **Nothing wrong here** records
 a good corner in one tap, and **Same as NW** (the last corner reported at that
 intersection) copies it, so Dayton & N 83rd St, where all four corners have the same
 older ramps, is one corner's ticks and then three taps. A small plan of the intersection

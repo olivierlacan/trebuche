@@ -85,6 +85,10 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .report-list .check { margin: 0; padding: 7px 0; border-top: 1px solid var(--line); }
 .report-list .check:first-child { border-top: 0; }
 .report-list input[type=checkbox] { width: 22px; height: 22px; flex: none; }
+.report-icon { flex: none; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.report-list .check { gap: 10px; }
+.report-list input:disabled ~ * { opacity: .45; }
+.report .button .report-icon { width: 24px; height: 24px; vertical-align: middle; margin: -4px 8px -4px -4px; }
 ul.checks { list-style: none; padding: 0; margin: 8px 0; }
 ul.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
 

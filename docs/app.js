@@ -168,6 +168,55 @@ const RAMP_ISSUES = {
   lip: ["Lip at street edge", "lip at the street edge"],
 };
 const issueList = v => (v || "").split("+").filter(k => RAMP_ISSUES[k]);
+
+// ------------------------------------------------------------------ report icons
+// One small drawing per thing a report can say, in the logo's style: a curb ramp seen
+// from above, the street below it. Fixed colors (concrete, asphalt, yellow pad) read the
+// same in light and dark mode. Decorative: the label next to each says it in words.
+const ICON = { walk: "#d6d4cf", ramp: "#bdbab3", edge: "#7d7a74", street: "#5b5f66", pad: "#f2c200", ink: "#2a2a2a" };
+function rampPlan({ pad = true, outline = !pad, extra = "" } = {}) {
+  const dots = pad ? [12, 16, 20].flatMap(x => [19.4, 21.4].map(y => `<circle cx="${x}" cy="${y}" r=".75" fill="#8a6d00"/>`)).join("") : "";
+  return `<rect width="32" height="23" fill="${ICON.walk}"/><rect y="23" width="32" height="9" fill="${ICON.street}"/>
+    <polygon points="4,23 10,8 22,8 28,23" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
+    ${pad ? `<rect x="9.5" y="18" width="13" height="5" fill="${ICON.pad}" stroke="${ICON.edge}" stroke-width=".5"/>${dots}`
+      : outline ? `<rect x="9.5" y="18" width="13" height="5" fill="none" stroke="${ICON.ink}" stroke-width=".9" stroke-dasharray="1.6 1.2"/>` : ""}
+    ${extra}`;
+}
+function reportIcon(kind, c, n) {
+  let body;
+  if (kind === "ok") {
+    body = rampPlan() + `<circle cx="25.5" cy="6.5" r="5.5" fill="#1a7f45" stroke="#fff" stroke-width="1.2"/>
+      <path d="M22.8,6.6l1.9,1.9l3.6,-3.7" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if (kind === "miss") {
+    // The street to cross (with its crosswalk) and the ✕ on this corner's curb. Drawn for
+    // a street running across, the corner above or below it; turned a quarter clockwise
+    // for the main street, which moves "above" to the right (east) and "below" to the left.
+    const above = n === "cross" ? c.corner.startsWith("N") : c.corner.endsWith("E");
+    const bars = [9, 13, 17, 21].map(x => `<rect x="${x}" y="11.5" width="2" height="9" fill="#fff" opacity=".85"/>`).join("");
+    const curbY = above ? 10 : 22, xy = above ? 5.5 : 26.5;
+    body = `<rect width="32" height="32" fill="${ICON.walk}"/><rect y="10" width="32" height="12" fill="${ICON.street}"/>${bars}
+      <line x1="0" x2="32" y1="${curbY}" y2="${curbY}" stroke="${ICON.edge}" stroke-width="1.2"/>
+      <path d="M12.5,${xy - 3.5}L19.5,${xy + 3.5}M19.5,${xy - 3.5}L12.5,${xy + 3.5}" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>`;
+    if (n === "main") body = `<g transform="rotate(90 16 16)">${body}</g>`;
+  } else if (kind === "no_warning") {
+    body = rampPlan({ pad: false });
+  } else if (kind === "old_style") {
+    const lines = [-8, -3, 2, 7, 12, 17, 22].map(d => `<path d="M${4 + d},23L${19 + d},8M${4 + d},8L${19 + d},23" stroke="${ICON.edge}" stroke-width=".7"/>`).join("");
+    body = `<defs><clipPath id="ramp-clip"><polygon points="4,23 10,8 22,8 28,23"/></clipPath></defs>` +
+      rampPlan({ pad: false, outline: false, extra: `<g clip-path="url(#ramp-clip)">${lines}</g>` });
+  } else if (kind === "damaged") {
+    body = rampPlan({ extra: `<path d="M11.5,8.5l2.5,3l-2,2.5l4,2.5" fill="none" stroke="${ICON.ink}" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="M19,9.5l1.5,3l2,1" fill="none" stroke="${ICON.ink}" stroke-width="1"/>` });
+  } else if (kind === "lip") {
+    // Seen from the side: a wheel rolling down the ramp toward a step before the street.
+    body = `<rect width="32" height="32" fill="#eef0f2"/>
+      <path d="M0,10H6L24,20V25H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
+      <rect x="24" y="25" width="8" height="7" fill="${ICON.street}"/>
+      <circle cx="17" cy="13.7" r="4" fill="#fff" stroke="${ICON.ink}" stroke-width="1.4"/><circle cx="17" cy="13.7" r="1" fill="${ICON.ink}"/>
+      <path d="M24,19.5V25.5" stroke="#c0392b" stroke-width="2.6" stroke-linecap="round"/>`;
+  }
+  return `<svg class="report-icon" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">${body}</svg>`;
+}
 const issuesText = v => issueList(v).map(k => RAMP_ISSUES[k][1]).join(", ");
 // The ramp issues that apply to a corner: your own check first, then the published one.
 const checkIssues = k => issueList(k.issues).join("+");
@@ -548,8 +597,8 @@ function reportBody(c) {
   const k = checks[c.corner_id];
   const covered = k ? coveredBy(k.ramps_for) : needsOf(c), issues = issueList(k?.issues);
   const noRamps = !!k && !covered.length;
-  const box = (name, label, on, disabled) => `<label class="check"><input type="checkbox" name="${name}"
-    ${on ? "checked" : ""} ${disabled ? "disabled" : ""}> ${esc(label)}</label>`;
+  const box = (name, label, on, disabled, icon) => `<label class="check"><input type="checkbox" name="${name}"
+    ${on ? "checked" : ""} ${disabled ? "disabled" : ""}>${icon}<span>${esc(label)}</span></label>`;
   const siblings = intersectionCorners(c).filter(x => x !== c);
   const last = siblings.map(x => [x, checks[x.corner_id]]).filter(([, v]) => v).sort((a, b) => (a[1].at || 0) - (b[1].at || 0)).pop();
   const todo = siblings.filter(x => !checks[x.corner_id]);
@@ -558,11 +607,11 @@ function reportBody(c) {
     <p><strong>${esc(CORNER_WORDS[c.corner][0].toUpperCase() + CORNER_WORDS[c.corner].slice(1))} corner.</strong>
       Tick anything missing or wrong. Each tick is saved.</p>
     <div class="report-list">
-      ${needsOf(c).map(n => box(`miss|${n}`, `No ramp to cross ${crossShort(c, n)}`, !!k && !covered.includes(n))).join("")}
-      ${Object.entries(RAMP_ISSUES).map(([i, [label]]) => box(i, label, issues.includes(i), noRamps)).join("")}
+      ${needsOf(c).map(n => box(`miss|${n}`, `No ramp to cross ${crossShort(c, n)}`, !!k && !covered.includes(n), false, reportIcon("miss", c, n))).join("")}
+      ${Object.entries(RAMP_ISSUES).map(([i, [label]]) => box(i, label, issues.includes(i), noRamps, reportIcon(i, c))).join("")}
     </div>
     <div class="buttons">
-      <button class="button ${k && k.ramps_for === needsOf(c).join("+") && !issues.length ? "on" : ""}" type="button" data-report-action="ok">Nothing wrong here</button>
+      <button class="button ${k && k.ramps_for === needsOf(c).join("+") && !issues.length ? "on" : ""}" type="button" data-report-action="ok">${reportIcon("ok", c)}Nothing wrong here</button>
       ${last && !k ? `<button class="button" type="button" data-report-action="same" data-from="${esc(last[0].corner_id)}">Same as ${esc(last[0].corner)}</button>` : ""}
       ${k ? `<button class="button" type="button" data-report-action="clear">Clear</button>` : ""}
     </div>
