@@ -489,6 +489,7 @@ function renderCorner() {
       <label class="field">Note (optional)
         <input type="text" name="notes" maxlength="200" value="${esc(noteNow)}"
           placeholder="e.g. new ramps, no yellow warning panel at SW"></label>
+      <p class="small" id="check-where">${whereText(c)}</p>
       <div class="buttons"><button class="button primary" type="submit">Save</button></div>
       <p class="small">Choose "Not checked" to remove a check.</p>
     </form>
@@ -544,7 +545,9 @@ document.getElementById("corner-detail").addEventListener("submit", e => {
     else {
       const old = checks[x.corner_id];
       // Re-saving the same answer keeps its date and "sent" mark.
-      checks[x.corner_id] = old && old.ramps_for === v && (old.notes || "") === notes ? old : { date, ramps_for: v, notes };
+      const fix = onSite(x);
+      checks[x.corner_id] = old && old.ramps_for === v && (old.notes || "") === notes && (!fix || old.distance_ft)
+        ? old : { date, ramps_for: v, notes, ...fix };
       saved++;
     }
     applyCheck(x);
@@ -556,6 +559,39 @@ document.getElementById("corner-detail").addEventListener("submit", e => {
   renderList();
   toast(saved ? `Saved in this browser (${myChecks().length} to send)` : "Checks removed");
 });
+
+// With location on, a check records how far the phone was from the corner, and how
+// precise the fix was. Never the position itself.
+const FT = 3.28084;
+function freshFix() {
+  return gps.last && Date.now() - gps.last.at < 120e3 ? gps.last : null;
+}
+function onSite(c) {
+  const fix = freshFix();
+  if (!fix) return null;
+  return { distance_ft: Math.round(map.distance([fix.lat, fix.lng], [c.lat, c.lon]) * FT / 5) * 5,
+           accuracy_ft: Math.round(fix.accuracy * FT / 5) * 5 };
+}
+// Where the phone says you are, compared with the intersection on screen.
+function whereText(c) {
+  const fix = freshFix();
+  if (!fix) {
+    return `Tip: turn on your location (the button under the zoom buttons) first, and each check records how far you
+      were from the corner, which shows it was made on site. Only that distance is saved, never your position.`;
+  }
+  const [near, d] = nearestCorner(fix.lat, fix.lng);
+  if (near.intersection_id !== c.intersection_id && d < 450) {
+    return `<strong>Your phone puts you at ${esc(MAIN_STREET)} &amp; ${esc(baseStreet(near))}</strong>, not this intersection.
+      <button class="link" type="button" data-gps-corner="${esc(near.corner_id)}">Check that one instead</button>?`;
+  }
+  const here = Math.min(...intersectionCorners(c).map(x => map.distance([fix.lat, fix.lng], [x.lat, x.lon])));
+  return here * FT < 300
+    ? `📍 You're here (about ${Math.round(here * FT / 10) * 10} ft from the nearest corner). Checks you save will say so.`
+    : `Your phone puts you about ${Math.round(here * FT / 10) * 10} ft away, so these checks won't count as on site.`;
+}
+function locatedText(k) {
+  return k.distance_ft != null ? `on site, ${k.distance_ft} ft from the corner (±${k.accuracy_ft} ft)` : "";
+}
 
 function intersectionCorners(c) {
   const order = ["NW", "NE", "SW", "SE"];
@@ -572,8 +608,11 @@ function checkOptions(c) {
 // ------------------------------------------------------------------ checks: review + send
 const csvCell = v => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 function checksCsv(cs) {
-  return ["corner_id,date_checked,ramps_for,notes",
-    ...cs.map(c => { const k = checks[c.corner_id]; return [c.corner_id, k.date, k.ramps_for, k.notes || ""].map(csvCell).join(","); }),
+  return ["corner_id,date_checked,ramps_for,notes,distance_ft,accuracy_ft",
+    ...cs.map(c => {
+      const k = checks[c.corner_id];
+      return [c.corner_id, k.date, k.ramps_for, k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
+    }),
   ].join("\n");
 }
 // "N 79th St: ramps both ways at all 4 corners" / "N 78th St: ramps both ways at NE, SE; no ramps at SW"
@@ -590,27 +629,23 @@ function intersectionSummary(cs) {
 }
 const checkGroups = cs => groupByIntersection(cs).map(g => [`${MAIN_STREET} & ${baseStreet(g[0])}`, g]);
 
+const ON_SITE_FT = 300;
+const onSiteGroup = g => g.some(c => checks[c.corner_id].distance_ft != null && checks[c.corner_id].distance_ft < ON_SITE_FT);
+const groupLine = (name, g) => `${name}: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`;
+
+// Opens .github/ISSUE_TEMPLATE/field-check.yml with every field filled in: each
+// field's id is a query parameter.
 function checksIssueUrl(cs, csvInBody = true) {
   const groups = checkGroups(cs);
-  const title = `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`;
   const notes = [...new Set(cs.map(c => checks[c.corner_id].notes).filter(Boolean))];
-  const body = [
-    "<!-- Please don't include your name, phone, or email. -->",
-    "",
-    ...groups.map(([name, g]) => `- **${name}**: ${intersectionSummary(g)}`),
-    ...(notes.length ? ["", ...notes.map(n => `> ${n}`)] : []),
-    "",
-    "### Photos (optional)",
-    "",
-    "Drag photos of the corners into this box, or attach them from your phone. One per corner, taken from the sidewalk, is plenty.",
-    "",
-    "### Rows for `data/field-checks.csv`",
-    "",
-    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(Too long for a link: paste the rows from your clipboard here.)"]),
-    "",
-    `Map: ${shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" })}`,
-  ].join("\n");
-  return `https://github.com/${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}&labels=field-check`;
+  const p = new URLSearchParams({
+    template: "field-check.yml",
+    title: `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`,
+    summary: [...groups.map(([name, g]) => `- ${groupLine(name, g)}`), ...notes.map(n => `> ${n}`)].join("\n"),
+    rows: csvInBody ? checksCsv(cs) : "(Too long for a link: paste the rows from your clipboard here.)",
+    map: shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" }),
+  });
+  return `https://github.com/${REPO}/issues/new?${p.toString().replace(/\+/g, "%20")}`;
 }
 
 function renderChecks() {
@@ -630,7 +665,7 @@ function renderChecks() {
       const sent = g.every(c => checks[c.corner_id].sent) ? ` · sent ${esc(checks[g[0].corner_id].sent)}` : "";
       const notes = [...new Set(g.map(c => checks[c.corner_id].notes).filter(Boolean))].join(" ");
       return `<li><button class="link" data-focus-check="${esc(g[0].corner_id)}">${esc(name)}</button><br>
-        <span class="small">${esc(intersectionSummary(g))}${notes ? `. ${esc(notes)}` : ""}<br>${esc(dates)}${sent}</span></li>`;
+        <span class="small">${esc(intersectionSummary(g))}${onSiteGroup(g) ? " · 📍 on site" : ""}${notes ? `. ${esc(notes)}` : ""}<br>${esc(dates)}${sent}</span></li>`;
     }).join("")}</ul>
     <div class="buttons">
       <button class="button primary" data-check-action="send">Send ${n === 1 ? "this intersection" : `these ${n} intersections`} on GitHub</button>
@@ -856,6 +891,7 @@ function gpsStop(msg) {
   gps.watch = null;
   gps.following = false;
   gps.layer.clearLayers();
+  gps.last = null;
   gps.button.classList.remove("on");
   gps.button.setAttribute("aria-pressed", "false");
   document.getElementById("gps-status").hidden = true;
@@ -874,6 +910,7 @@ function nearestCorner(lat, lng) {
 
 function gpsUpdate(pos) {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  gps.last = { lat, lng, accuracy, at: Date.now() }; // in memory only, for "checked on site"
   gps.layer.clearLayers();
   L.circle([lat, lng], { radius: accuracy, color: "#1a73e8", weight: 1, fillOpacity: 0.12, interactive: false }).addTo(gps.layer);
   L.circleMarker([lat, lng], { radius: 7, color: "#fff", weight: 3, fillColor: "#1a73e8", fillOpacity: 1, interactive: false }).addTo(gps.layer);
@@ -882,6 +919,8 @@ function gpsUpdate(pos) {
     map.setView([lat, lng], Math.max(map.getZoom(), 19));
     gps.moving = false;
   }
+  const where = document.getElementById("check-where");
+  if (where && state.corner) where.innerHTML = whereText(byId.get(state.corner));
   const [c, d] = nearestCorner(lat, lng);
   const el = document.getElementById("gps-status");
   el.hidden = false;

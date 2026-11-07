@@ -457,6 +457,7 @@ end
 # Checks neighbors made in person (data/field-checks.csv, pasted from the map's
 # "Send checks" GitHub issues): which crossings had a ramp on the day.
 # ramps_for is "main", "cross", "main+cross" or "none". The latest check per corner wins.
+# distance_ft and accuracy_ft (phone location when saved) are kept for review, not used here.
 def load_field_checks
   path = File.join(ROOT, "data", "field-checks.csv")
   return {} unless File.exist?(path)

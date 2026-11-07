@@ -1,5 +1,5 @@
-corner_id,date_checked,ramps_for,notes
-dayton-79-NE,2026-11-07,main+cross,New ramps at all four corners
-dayton-79-NW,2026-11-07,main+cross,New ramps at all four corners
-dayton-79-SE,2026-11-07,main+cross,New ramps at all four corners
-dayton-79-SW,2026-11-07,main+cross,New ramps at all four corners
+corner_id,date_checked,ramps_for,notes,distance_ft,accuracy_ft
+dayton-79-NE,2026-11-07,main+cross,New ramps at all four corners,,
+dayton-79-NW,2026-11-07,main+cross,New ramps at all four corners,,
+dayton-79-SE,2026-11-07,main+cross,New ramps at all four corners,,
+dayton-79-SW,2026-11-07,main+cross,New ramps at all four corners,,

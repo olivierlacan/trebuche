@@ -358,24 +358,31 @@ corner (ramps both ways, a ramp for one crossing only, no ramps, or not checked)
 have ramps** / **None have ramps** shortcuts, and one note. There's no server: checks
 are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
 street's map) and the corners are redrawn right away for that visitor, with an orange
-check. A whole walk can go out at once from the **Checks** tab, which opens a prefilled
-GitHub issue (label `field-check`): one line per intersection ("ramps both ways at all
-4 corners"), a Photos section to drag pictures into (GitHub hosts them; a link can't
-attach files, so this is the one manual step), and the rows as CSV. If the link would
+check. With location on (the locate button), the form says whether the phone is at the
+intersection on screen, offers to switch if it's at a different one, and each check
+records how far the phone was from its corner and how precise the fix was (never the
+position itself). A whole walk can go out at once from the **Checks** tab, which opens
+the `.github/ISSUE_TEMPLATE/field-check.yml` issue form (label `field-check`) with every
+field filled in from query parameters (`template=field-check.yml&summary=…&rows=…&map=…`):
+one line per intersection ("ramps both ways at all 4 corners (phone location on site)"),
+a Photos field to drag pictures into (GitHub hosts them; a link can't attach files, so
+this is the one manual step), and the rows as CSV. If the link would
 be too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV**
 is there for people without a GitHub account.
 
 To publish them, paste the rows into `data/field-checks.csv` and push:
 
 ```
-corner_id,date_checked,ramps_for,notes
-dayton-78-NE,2026-11-07,main+cross,
+corner_id,date_checked,ramps_for,notes,distance_ft,accuracy_ft
+dayton-78-NE,2026-11-07,main+cross,,15,20
 ```
 
 `ramps_for` names the crossings that had a ramp: `main` (crossing the main street),
 `cross` (crossing the side street), `main+cross`, or `none`. The latest check for a
 corner wins over every other source and sets `overall` (a check that finds no ramp
-counts as confirmed missing), unless SDOT recorded work there after the check. The CSV
+counts as confirmed missing), unless SDOT recorded work there after the check.
+`distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
+doesn't use them yet, they're there for whoever reviews the issue. The CSV
 gains `field_*` columns. Once the published data has a check as new as a visitor's own,
 the browser drops its copy.
 
