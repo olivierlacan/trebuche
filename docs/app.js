@@ -208,17 +208,17 @@ function reportIcon(kind, c, n) {
     body = rampPlan({ extra: `<path d="M11.5,8.5l2.5,3l-2,2.5l4,2.5" fill="none" stroke="${ICON.ink}" stroke-width="1.4" stroke-linejoin="round"/>
       <path d="M19,9.5l1.5,3l2,1" fill="none" stroke="${ICON.ink}" stroke-width="1"/>` });
   } else if (kind === "lip") {
-    // Elevation: someone walking up from the street catches a toe on the step where the
-    // ramp meets the gutter (red) and pitches forward.
+    // Elevation: a pair of feet walking up from the street, the front toe stopped by the
+    // step where the ramp meets the gutter (red), the back heel lifting.
+    const shoe = fill => `<path d="M11,0H2C.4,0 -.3,-1 0,-2.2C.4,-3.6 2.2,-4 4.2,-4.3L7.4,-5.2C8.4,-6.6 9.7,-7 11,-7Z" fill="${fill}"/>
+      <path d="M10.6,-.9H.8" stroke="#fff" stroke-width=".9" opacity=".75"/><path d="M8.8,-6.6L9.6,-15" stroke="${fill}" stroke-width="4.2"/>`;
     body = `<rect width="32" height="32" fill="#eef0f2"/>
-      <path d="M0,15L16,22V25H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
-      <rect x="16" y="25" width="16" height="7" fill="${ICON.street}"/>
-      <path d="M16,21.6V25.4" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>
-      <g fill="none" stroke="${ICON.ink}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="10.5" cy="7.5" r="2.4" fill="${ICON.ink}" stroke="none"/>
-        <path d="M13,10L20.5,15.5M20.5,15.5L17.2,21.4L16.4,22.2M20.5,15.5L25,20L27.5,25M15,11.5L10.5,14.5M15,11.5L12.5,16.5"/>
-      </g>
-      <path d="M27,6.5l2,-1.5M28.5,10l2.4,-.3" stroke="${ICON.ink}" stroke-width="1" stroke-linecap="round"/>`;
+      <path d="M0,19L8,23V27H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
+      <rect x="8" y="27" width="24" height="5" fill="${ICON.street}"/>
+      <path d="M8,22.6V27.4" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>
+      <g transform="translate(19.5,27) rotate(-28) scale(.9)">${shoe("#6d6d6d")}</g>
+      <g transform="translate(8.2,27) scale(.9)">${shoe(ICON.ink)}</g>
+      <path d="M5,17.5l-2.4,-1.2M5.8,15.1l-1.2,-2.3M8.2,14.3l-.1,-2.6" stroke="${ICON.ink}" stroke-width="1.1" stroke-linecap="round"/>`;
   }
   return `<svg class="report-icon" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">${body}</svg>`;
 }
