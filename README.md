@@ -353,13 +353,16 @@ intersection, then to a quadrant.
 ## Checking corners in person
 
 The sources can be years out of date, so the map lets neighbors record what they see.
-On any corner, **Checked it in person?** covers the whole intersection, with two answers
-per corner: which way its ramps go (**both directions**, **north–south only** for
-crossing the side street, **east–west only** for crossing the main street, **no ramps**, or
-not checked) and whether they have a **yellow pad** (the detectable warning panel).
-Older one-direction ramps without a pad, like every corner of Dayton & N 83rd St, are
-two taps per corner. Shortcuts fill in **All both directions**, **All have yellow
-pads** or **None have ramps**, and one note covers anything else. There's no server: checks
+On any corner, **Checked it in person?** covers the whole intersection with checkboxes:
+one column per corner, and rows for **Looked at**, **No ramp north–south** (for crossing
+the side street), **No ramp east–west** (for crossing the main street), **No yellow pad**,
+**Older crisscross style**, **Cracked or uneven** and **Lip at street edge**. A corner
+ticked with nothing else has ramps both directions with yellow pads. Tapping a row's name
+ticks it at every corner, so an intersection like Dayton & N 83rd St (older ramps,
+north–south only, no pads, at all four corners) is three taps. Above the grid, a plan of
+the intersection redraws as boxes are ticked (yellow ramp: with a pad, gray: without, ✕:
+no ramp), and tapping a corner on it ticks **Looked at**. One note covers anything else.
+There's no server: checks
 are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
 street's map) and the corners are redrawn right away for that visitor, with an orange
 check. With location on (the locate button), the form says whether the phone is at the
@@ -388,8 +391,7 @@ corner wins over every other source and sets `overall` (a check that finds no ra
 counts as confirmed missing), unless SDOT recorded work there after the check.
 `yellow_pad` is `yes`, `no` or blank (not noted). `ramp_issues` lists anything else
 wrong with the ramps, joined with `+`: `old_style` (crisscross grooves), `damaged`,
-`lip`; the form doesn't ask about these, but they can be added from an issue's notes. A
-`no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
+`lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
 request text asks SDOT to upgrade the ramp as well as add any missing one.
 `distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
 doesn't use them yet, they're there for whoever reviews the issue. The CSV

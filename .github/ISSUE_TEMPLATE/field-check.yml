@@ -12,7 +12,7 @@ body:
     id: summary
     attributes:
       label: What you saw
-      description: One line per intersection, e.g. "Dayton Ave N & N 83rd St, north–south only without yellow pad at all 4 corners".
+      description: One line per intersection, e.g. "Dayton Ave N & N 83rd St: no ramp east–west, no yellow pad, older crisscross style at all 4 corners".
     validations:
       required: true
   - type: textarea

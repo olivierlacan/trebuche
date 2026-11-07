@@ -11,17 +11,21 @@
   --filed: #138a72;
   --selected: #1f5fae;
   --checked: #c2410c;
+  --checked-soft: #fde7da;
+  --street: #ffffff;
   --panel-w: 400px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #17181a; --fg: #ececec; --muted: #a4a7ab; --line: #34363a; --soft: #222326;
     --accent: #78a9ec; --accent-fg: #0d1520;
+    --checked-soft: #4a2414; --street: #3a3c40;
   }
 }
 :root[data-theme="dark"] {
   --bg: #17181a; --fg: #ececec; --muted: #a4a7ab; --line: #34363a; --soft: #222326;
   --accent: #78a9ec; --accent-fg: #0d1520;
+  --checked-soft: #4a2414; --street: #3a3c40;
 }
 
 * { box-sizing: border-box; }
@@ -70,15 +74,21 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .check-form .field { display: block; font-size: 14px; margin: 8px 0; }
 .check-form .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
   border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
-.check-grid { border-collapse: collapse; margin: 6px 0; width: 100%; }
-.check-grid th { text-align: left; font-size: 14px; padding: 4px 6px 4px 0; }
-.check-grid th[scope=row] { width: 3em; }
-.check-grid th[scope=col] { font-size: 12px; font-weight: 600; color: var(--muted); padding-bottom: 0; }
-.check-grid th[scope=col]:last-child { width: 6em; }
-.check-grid td { padding: 3px 0 3px 6px; }
-.check-grid tr.here th { text-decoration: underline 3px var(--checked); text-underline-offset: 4px; }
-.check-grid select { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; border: 1px solid var(--line);
-  border-radius: 6px; background: var(--bg); color: var(--fg); }
+.check-diagram { margin: 8px 0; }
+.check-diagram svg { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+.check-diagram .corner { cursor: pointer; }
+.check-diagram .corner-name { font: 600 15px system-ui, sans-serif; fill: var(--fg); }
+.check-diagram .street-name { font: 12px system-ui, sans-serif; fill: var(--muted); }
+.check-grid { border-collapse: collapse; margin: 6px 0; width: 100%; font-size: 14px; }
+.check-grid th[scope=row] { text-align: left; font-weight: 400; padding: 2px 6px 2px 0; }
+.check-grid th[scope=row] .link { text-align: left; }
+.check-grid th[scope=col] { font-size: 13px; font-weight: 600; padding: 0 0 2px; }
+.check-grid th[scope=col].here { text-decoration: underline 3px var(--checked); text-underline-offset: 4px; }
+.check-grid td { text-align: center; padding: 0; width: 15%; }
+.check-grid td.na { color: var(--muted); }
+.check-grid tr.seen { border-bottom: 1px solid var(--line); }
+.check-grid tr.seen th .link { font-weight: 600; }
+.check-grid input[type=checkbox] { width: 22px; height: 22px; margin: 6px; cursor: pointer; }
 ul.checks { list-style: none; padding: 0; margin: 8px 0; }
 ul.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
 
