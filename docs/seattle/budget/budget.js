@@ -13,10 +13,16 @@ const money = n => n >= 1e9 ? `$${(n / 1e9).toFixed(n >= 1e10 ? 0 : 1)} billion`
 const smooth = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 const [CLAT, CLON] = B.cell;
 
-const DEFAULTS = { budget: 3000000, cost: 25000, rpi: B.ramps_per_intersection, dis: 1, art: 1, old: 0 };
+const DEFAULTS = { budget: 3000000, cost: 25000, rpi: B.ramps_per_intersection, dis: 1, art: 1, old: 0, sched: 1 };
 const $ = id => document.getElementById(id);
 const inputs = { budget: $("budget"), cost: $("cost"), rpi: $("rpi") };
-const checks = { dis: $("w-dis"), art: $("w-art"), old: $("w-old") };
+const checks = { dis: $("w-dis"), art: $("w-art"), old: $("w-old"), sched: $("skip-sched") };
+// Scheduled city work (dotMaps). "ramps" and "paving" will build the ramps; "street" is a chance to add them.
+const WORK = B.work || [];
+const workOf = i => (i[4] == null ? null : WORK[i[4]]);
+const willBuild = i => ["ramps", "paving"].includes(workOf(i)?.kind);
+const KIND = { ramps: "curb ramp work", paving: "repaving", street: "street project" };
+const day = s => (s ? new Date(`${s}T12:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "");
 $("rpi-hint").textContent = `How many ramps it takes to finish one intersection. ${B.ramps_per_intersection} is the average SDOT has built where it has built any.`;
 
 // Read the starting numbers from the address bar.
@@ -41,19 +47,23 @@ function settings() {
   const num = (el, min) => Math.max(min, Number(el.value) || 0);
   return {
     budget: num(inputs.budget, 0), cost: num(inputs.cost, 1), rpi: num(inputs.rpi, 0.1),
-    dis: checks.dis.checked, art: checks.art.checked, old: checks.old.checked,
+    dis: checks.dis.checked, art: checks.art.checked, old: checks.old.checked, sched: checks.sched.checked,
   };
 }
 
 function plan(s) {
   const perInt = s.cost * s.rpi;
   const scored = B.cells.map(c => {
-    let score = c.ints.reduce((sum, i) => sum + (s.art && i[3] > 0 ? 1.5 : 1), 0);
+    // The intersections this budget pays for: all of them, or those no scheduled work will fix.
+    const ints = s.sched ? c.ints.filter(i => !willBuild(i)) : c.ints;
+    if (!ints.length) return null;
+    let score = ints.reduce((sum, i) => sum + (s.art && i[3] > 0 ? 1.5 : 1), 0);
     if (s.dis && c.disability_pct) score *= c.disability_pct / B.city.disability_pct;
     if (s.old && c.over_65_pct) score *= c.over_65_pct / B.city.over_65_pct;
     // Ties go to the square where missing ramps are the larger share of its intersections.
-    return { c, score, share: c.ints.length / c.with_sidewalk, cost: c.ints.length * perInt };
-  }).sort((a, b) => b.score - a.score || b.share - a.share);
+    return { c, ints, score, share: ints.length / c.with_sidewalk, cost: ints.length * perInt,
+      coord: ints.filter(i => workOf(i)?.kind === "street").length };
+  }).filter(Boolean).sort((a, b) => b.score - a.score || b.share - a.share);
   let spent = 0;
   scored.forEach((r, k) => {
     r.rank = k + 1;
@@ -61,7 +71,8 @@ function plan(s) {
     spent += r.cost;
     r.to = s.budget > 0 ? Math.max(r.from, Math.ceil(spent / s.budget - 1e-9)) : Infinity;
   });
-  return { rows: scored, total: spent, perInt, years: s.budget > 0 ? Math.ceil(spent / s.budget - 1e-9) : Infinity };
+  const count = scored.reduce((n, r) => n + r.ints.length, 0);
+  return { rows: scored, total: spent, perInt, count, years: s.budget > 0 ? Math.ceil(spent / s.budget - 1e-9) : Infinity };
 }
 
 // Funding-year bands for the map: darkest is soonest.
@@ -91,7 +102,25 @@ function select(id, zoom, open = true) {
   if (open) sq.openPopup();
 }
 
-$("key").innerHTML = BANDS.map(([, , t], k) => `<li><i style="background:${bandColor(k)}"></i>${t}</li>`).join("");
+$("key").innerHTML = BANDS.map(([, , t], k) => `<li><i style="background:${bandColor(k)}"></i>${t}</li>`).join("") +
+  `<li><i style="background:#fff"></i>Covered by scheduled work</li>` +
+  `<li><i class="dot"></i>Ramp work or repaving scheduled</li><li><i class="ring"></i>Other city street project coming</li>`;
+
+// Intersections with scheduled work, drawn over the squares.
+const PURPLE = "#7a3fc2";
+const workDots = new Map();
+for (const c of B.cells) for (const i of c.ints) {
+  const w = workOf(i);
+  if (!w) continue;
+  const [lat, lon, name] = i;
+  const m = L.circleMarker([lat, lon], w.kind === "street"
+    ? { radius: 6, color: PURPLE, weight: 3, fillColor: "#fff", fillOpacity: 1 }
+    : { radius: 6, color: "#fff", weight: 2, fillColor: PURPLE, fillOpacity: 1 })
+    .bindPopup(`<strong>${esc(name)}</strong><br>No curb ramp. Scheduled ${KIND[w.kind]}:<br>${esc(w.name)}` +
+      `<br>${esc(w.agency || "")}${w.start ? `, ${day(w.start)}–${day(w.end)}` : ""}`)
+    .addTo(map);
+  workDots.set(`${lat},${lon}`, m);
+}
 
 // ------------------------------------------------------------ rendering
 let showAllYears = false;
@@ -102,29 +131,43 @@ function render() {
   const p = plan(s);
   const perYear = s.budget / p.perInt;
   const y1 = p.rows.filter(r => r.to === 1);
+  const sched = B.cells.flatMap(c => c.ints).filter(willBuild).length;
   const allSpots = new Set(B.cells.filter(c => c.spot).map(c => c.spot));
   const doneSpots = new Set(allSpots);
   for (const r of p.rows) if (r.c.spot && r.to > 1) doneSpots.delete(r.c.spot);
 
   $("stats").innerHTML = [
     [fmt(perYear), `intersections a year at ${money(p.perInt)} each`],
-    [money(p.total), `to give all ${fmt(B.no_ramp)} known no-ramp intersections their ramps`],
+    [money(p.total), s.sched ? `for the ${fmt(p.count)} known no-ramp intersections no scheduled work will fix`
+      : `to give all ${fmt(B.no_ramp)} known no-ramp intersections their ramps`],
     [Number.isFinite(p.years) ? fmt(p.years) : "never", Number.isFinite(p.years)
       ? `years to finish them all at this budget (by ${START_YEAR + p.years - 1})` : "with no yearly budget"],
-    [fmt(y1.reduce((n, r) => n + r.c.ints.length, 0)), `intersections finished in year 1, in ${y1.length} area${y1.length === 1 ? "" : "s"}` +
+    [fmt(y1.reduce((n, r) => n + r.ints.length, 0)), `intersections finished in year 1, in ${y1.length} area${y1.length === 1 ? "" : "s"}` +
       (doneSpots.size ? `, completing ${doneSpots.size} of the ${allSpots.size} <a href="../hotspots/">hotspots</a>` : "")],
   ].map(([n, label]) => `<div class="stat"><div class="n"><span>${n}</span></div><div class="label">${label}</div></div>`).join("");
+
+  const coordN = p.rows.reduce((n, r) => n + r.coord, 0);
+  $("sched-note").innerHTML = `${fmt(sched)} intersections already have curb ramp work or repaving scheduled` +
+    (s.sched ? " and are left out of the budget" : " (counted in the budget here)") +
+    `. ${fmt(coordN)} more are on streets with another city project coming: <a href="#sched-h">build their ramps with it</a>.`;
 
   // Map colors and popups.
   for (const r of p.rows) {
     const k = Number.isFinite(r.to) ? bandOf(r.to) : BANDS.length - 1;
     squares.get(r.c.id).setStyle({ fillColor: bandColor(k) })
       .bindPopup(`<strong>#${r.rank}: ${esc(r.c.hood || "Seattle")}</strong><br>${esc(r.c.streets.join(", "))}<br>` +
-        `${r.c.ints.length} of ${r.c.with_sidewalk} intersections with no ramp<br>` +
+        `${r.ints.length} of ${r.c.with_sidewalk} intersections with no ramp` +
+        (r.ints.length < r.c.ints.length ? ` (plus ${r.c.ints.length - r.ints.length} already scheduled)` : "") + "<br>" +
         `${money(r.cost)}, ${Number.isFinite(r.to) ? `built in ${yearLabel(r)}` : "not funded"}` +
         (r.c.spot ? `<br><a href="../hotspots/?spot=${r.c.spot}">Hotspot ${r.c.spot}</a>` : ""))
       .bindTooltip(`#${r.rank} · ${Number.isFinite(r.to) ? yearLabel(r) : "not funded"}`);
   }
+
+  // Squares with nothing left to fund: scheduled work covers them.
+  const funded = new Set(p.rows.map(r => r.c.id));
+  for (const c of B.cells) if (!funded.has(c.id)) squares.get(c.id).setStyle({ fillColor: "#ffffff" })
+    .bindPopup(`<strong>${esc(c.hood || "Seattle")}</strong><br>${esc(c.streets.join(", "))}<br>All ${c.ints.length} no-ramp intersection${c.ints.length === 1 ? " has" : "s have"} work scheduled`)
+    .bindTooltip("work already scheduled");
 
   // Year-by-year list. A square spanning years is listed in the year it starts.
   $("years-lede").textContent = Number.isFinite(p.years)
@@ -136,12 +179,14 @@ function render() {
   const shown = showAllYears ? years : years.slice(0, YEARS_SHOWN);
   $("years").innerHTML = shown.map(y => {
     const rows = byYear.get(y);
-    const n = rows.reduce((t, r) => t + r.c.ints.length, 0);
+    const n = rows.reduce((t, r) => t + r.ints.length, 0);
     return `<li class="year"><h3><i style="background:${bandColor(bandOf(y))}" aria-hidden="true"></i>Year ${y} (${START_YEAR + y - 1})
         <span class="sub">${rows.length} area${rows.length === 1 ? "" : "s"} start, ${fmt(n)} intersections</span></h3>
       <ol>${rows.map(r => `<li><span class="rk">#${r.rank}</span>
         <span class="what"><strong>${esc(r.c.hood || "Seattle")}</strong>: ${esc(r.c.streets.join(", "))}
-          <span class="small">${r.c.ints.length} of ${r.c.with_sidewalk} intersections with no ramp` +
+          <span class="small">${r.ints.length} of ${r.c.with_sidewalk} intersections with no ramp` +
+          `${r.ints.length < r.c.ints.length ? ` (plus ${r.c.ints.length - r.ints.length} already scheduled)` : ""}` +
+          `${r.coord ? ` · ${r.coord} on a street with a city project coming` : ""}` +
           `${r.c.district ? ` · District ${esc(r.c.district)}` : ""}${r.c.spot ? ` · <a href="../hotspots/?spot=${r.c.spot}">hotspot ${r.c.spot}</a>` : ""}` +
           `${r.to > r.from ? ` · finishes in year ${r.to}` : ""} · <button type="button" class="link" data-cell="${r.c.id}">map</button></span></span>
         <span class="amt">${money(r.cost)}</span></li>`).join("")}</ol></li>`;
@@ -183,10 +228,12 @@ $("csv").addEventListener("click", () => {
   const s = settings();
   const q = v => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v);
   const lines = [["rank", "start_year", "finish_year", "neighborhood", "council_district", "hotspot", "intersection", "arterial",
-    "latitude", "longitude", "estimated_cost"].join(",")];
-  for (const r of current.rows) for (const [lat, lon, name, art] of r.c.ints) {
+    "latitude", "longitude", "estimated_cost", "scheduled_work", "scheduled_work_type", "scheduled_start", "scheduled_end"].join(",")];
+  for (const r of current.rows) for (const i of r.ints) {
+    const [lat, lon, name, art] = i, w = workOf(i);
     lines.push([r.rank, Number.isFinite(r.from) ? START_YEAR + r.from - 1 : "", Number.isFinite(r.to) ? START_YEAR + r.to - 1 : "",
-      r.c.hood || "", r.c.district || "", r.c.spot || "", name, art > 0 ? "yes" : "no", lat, lon, Math.round(current.perInt)].map(q).join(","));
+      r.c.hood || "", r.c.district || "", r.c.spot || "", name, art > 0 ? "yes" : "no", lat, lon, Math.round(current.perInt),
+      w?.name || "", w ? KIND[w.kind] : "", w?.start || "", w?.end || ""].map(q).join(","));
   }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/csv" }));
@@ -194,5 +241,34 @@ $("csv").addEventListener("click", () => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
+
+// ------------------------------------------------------------ scheduled work
+{
+  const byWork = new Map();
+  for (const c of B.cells) for (const i of c.ints) if (i[4] != null) (byWork.get(i[4]) || byWork.set(i[4], []).get(i[4])).push([i, c]);
+  const order = { ramps: 0, paving: 1, street: 2 };
+  const items = [...byWork].sort(([a, x], [b, y]) => order[WORK[a].kind] - order[WORK[b].kind] || y.length - x.length || (WORK[a].start || "").localeCompare(WORK[b].start || ""));
+  const SHOW = 8;
+  const more = $("more-sched");
+  more.textContent = `Show all ${items.length} projects`;
+  more.hidden = items.length <= SHOW;
+  more.addEventListener("click", () => { $("sched").querySelectorAll("li.sched-item[hidden]").forEach(li => { li.hidden = false; }); more.hidden = true; });
+  $("sched").innerHTML = items.map(([k, list], n) => {
+    const w = WORK[k];
+    return `<li class="year sched-item"${n >= SHOW ? " hidden" : ""}><h3><i style="background:${w.kind === "street" ? "#fff;box-shadow:inset 0 0 0 3px " + PURPLE : PURPLE}" aria-hidden="true"></i>${esc(w.name)}
+        <span class="when">${KIND[w.kind]} · ${esc(w.agency || "")}${w.start ? ` · ${day(w.start)} to ${day(w.end)}` : ""}</span></h3>
+      <ol>${list.map(([[lat, lon, name], c]) => `<li class="pt"><span class="what"><strong>${esc(name)}</strong>
+        <span class="small">${esc(c.hood || "Seattle")}${c.district ? ` · District ${esc(c.district)}` : ""}${c.spot ? ` · <a href="../hotspots/?spot=${c.spot}">hotspot ${c.spot}</a>` : ""}
+        · <button type="button" class="link" data-pt="${lat},${lon}">map</button></span></span><span class="amt"></span></li>`).join("")}</ol></li>`;
+  }).join("");
+  $("sched").addEventListener("click", e => {
+    const b = e.target.closest("[data-pt]");
+    if (!b) return;
+    const m = workDots.get(b.dataset.pt);
+    $("planmap").scrollIntoView({ behavior: smooth, block: "center" });
+    map.setView(m.getLatLng(), 17);
+    m.openPopup();
+  });
+}
 
 $("refreshed").textContent = `Data refreshed ${B.generated.slice(0, 10)}.`;

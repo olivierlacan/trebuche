@@ -20,6 +20,7 @@
 
 require "fileutils"
 require "json"
+require "date"
 require "net/http"
 require "set"
 require "time"
@@ -33,6 +34,9 @@ AREAS = JSON.parse(File.read(File.join(ROOT, "data", "areas.json")))
 ARCGIS = "https://services.arcgis.com/ZOyb2t4B0UYuYNYH/arcgis/rest/services"
 SEATTLE_BBOX = [-122.46, 47.48, -122.22, 47.74] # W S E N
 PS_URL = "https://sidewalk-sea.cs.washington.edu/v3/api/accessScoreIntersections"
+# dotMaps, the city's public street-work coordination map (streetwork.seattle.gov).
+DOTMAPS = "https://streetwork.seattle.gov/publicapi/temporal_entity"
+WORK_M = 20 # scheduled work this close to an intersection counts as reaching it
 UA = "trebuche-curb-ramp-survey/0.1 (neighborhood accessibility project)"
 
 MATCH_M = 25        # Project Sidewalk intersection / sidewalk end this close counts
@@ -115,7 +119,85 @@ def fetch(refresh)
     arcgis_all("neighborhood_map_layers", "NEIGH_NAME,NEIGH_TYPE,TOTAL_POPULATION,POPULATION_DISABILITY_PERC,Children_under_5,Older_Adults_65_over")
       .map { { "props" => _1["properties"], "geometry" => _1["geometry"] } }
   end
-  [ints, ramps, sidewalks, ps, hoods]
+  work = cached("dotmaps_work.json", refresh) { dotmaps_work }
+  [ints, ramps, sidewalks, ps, hoods, work]
+end
+
+# Paving and street projects scheduled on dotMaps that haven't ended yet. Paving a street
+# obliges the city to build missing ramps at its crossings (DOJ/FHWA, 2013), and some
+# projects are ramp work outright. Kept as one record per project, with all its shapes.
+def dotmaps_work
+  today = Date.today
+  projects = {}
+  %w[paving surface_improvement].each do |layer|
+    url = "#{DOTMAPS}/#{layer}/?" + URI.encode_www_form(format: "json", start_date: today.to_s, end_date: (today >> 60).to_s)
+    while url
+      d = http_json(url, {})
+      d["results"].each do |r|
+        a = r["attrs"]
+        text = "#{a["name"]} #{a["descr"]}"
+        next if text.match?(/cancel+ed/i)
+
+        start, stop = [a["start_date"], a["end_date"]].map { Date.strptime(_1.to_s, "%m/%d/%Y") rescue nil }
+        next if stop && stop < today
+
+        kind = text.match?(/curb ramp|\bADA\b/i) ? "ramps" : layer == "paving" ? "paving" : "street"
+        p = projects[a["id"]] ||= { "name" => a["name"].to_s.sub(/\A\S+ \| /, "").strip, "kind" => kind, "agency" => a["agency"],
+                                     "start" => start&.to_s, "end" => stop&.to_s, "shapes" => [] }
+        p["shapes"] << r["shape"]
+      end
+      url = d["next"]
+      print "\r  dotMaps #{layer}: #{projects.size} projects"
+    end
+  end
+  puts
+  projects.values
+end
+
+# Line segments of a GeoJSON geometry, as [[lon, lat], [lon, lat]] pairs (points as zero-length).
+def segments(g)
+  c = g["coordinates"]
+  case g["type"]
+  when "Point" then [[c, c]]
+  when "MultiPoint" then c.map { [_1, _1] }
+  when "LineString" then c.each_cons(2).to_a
+  when "MultiLineString", "Polygon" then c.flat_map { _1.each_cons(2).to_a }
+  when "MultiPolygon" then c.flatten(1).flat_map { _1.each_cons(2).to_a }
+  when "GeometryCollection" then g["geometries"].flat_map { segments(_1) }
+  else []
+  end
+end
+
+def seg_dist_m(lat, lon, (ax, ay), (bx, by))
+  ax, ay, bx, by = (ax - lon) * M_LON, (ay - lat) * M_LAT, (bx - lon) * M_LON, (by - lat) * M_LAT
+  dx, dy = bx - ax, by - ay
+  len = dx * dx + dy * dy
+  t = len.zero? ? 0 : (-(ax * dx + ay * dy) / len).clamp(0, 1)
+  Math.hypot(ax + t * dx, ay + t * dy)
+end
+
+# For each no-ramp intersection, the index of the scheduled project that reaches it, if any.
+# Ramp work beats paving, which beats other street work, then the soonest start wins.
+def match_work(rows, work)
+  rank = { "ramps" => 0, "paving" => 1, "street" => 2 }
+  # Bucket segments by every ~110 m cell their bounding box touches, for a quick lookup.
+  cell = 0.001
+  buckets = Hash.new { |h, k| h[k] = [] }
+  work.each_with_index do |w, i|
+    w["shapes"].flat_map { segments(_1) }.each do |(x1, y1), (x2, y2)|
+      ((([y1, y2].min / cell).floor)..(([y1, y2].max / cell).floor)).each do |a|
+        ((([x1, x2].min / cell).floor)..(([x1, x2].max / cell).floor)).each { |b| buckets[[a, b]] << [i, [[x1, y1], [x2, y2]]] }
+      end
+    end
+  end
+  rows.each do |r|
+    next unless r[:status] == "none" && r[:sidewalk] == "yes"
+
+    a, b = (r[:lat] / cell).floor, (r[:lon] / cell).floor
+    near = [-1, 0, 1].product([-1, 0, 1]).flat_map { |da, db| buckets.fetch([a + da, b + db], []) }
+    hits = near.select { |_, s| seg_dist_m(r[:lat], r[:lon], *s) <= WORK_M }.map(&:first).uniq
+    r[:work] = hits.min_by { [rank[work[_1]["kind"]], work[_1]["start"].to_s] }
+  end
 end
 
 # ---------------------------------------------------------------- geometry
@@ -290,7 +372,7 @@ end
 # no-ramp intersection, the intersections in it, and the neighborhood numbers used to weight
 # it. The planner decides the order in the browser, so people can change the budget and the
 # weights without rebuilding.
-def budget_data(rows, spots, hood_of, district_of, hoods)
+def budget_data(rows, spots, hood_of, district_of, hoods, work)
   actionable = rows.select { _1[:status] == "none" && _1[:sidewalk] == "yes" }
   with_sw = rows.select { _1[:sidewalk] == "yes" }.group_by { [(_1[:lat] / CELL_LAT).floor, (_1[:lon] / CELL_LON).floor] }
   # Which numbered hotspot (1-based, as on the hotspots page) a square belongs to, if any.
@@ -304,6 +386,9 @@ def budget_data(rows, spots, hood_of, district_of, hoods)
   city_dis = cras.sum { _1["TOTAL_POPULATION"].to_f * _1["POPULATION_DISABILITY_PERC"].to_f } / pop
   city_old = cras.sum { _1["Older_Adults_65_over"].to_f } / pop * 100
   built = rows.select { _1[:status] == "ramps" }.map { _1[:ramps] }
+  # Keep only the projects that reach a no-ramp intersection, renumbered.
+  used = actionable.filter_map { _1[:work] }.uniq.sort
+  renum = used.each_with_index.to_h
 
   cells = actionable.group_by { [(_1[:lat] / CELL_LAT).floor, (_1[:lon] / CELL_LON).floor] }.map do |(i, j), none|
     hood = none.filter_map { hood_of.call(_1[:lat], _1[:lon]) }.map { _1["props"] }.tally.max_by(&:last)&.first
@@ -316,8 +401,8 @@ def budget_data(rows, spots, hood_of, district_of, hoods)
       "with_sidewalk" => with_sw[[i, j]].size,
       "disability_pct" => hood&.dig("POPULATION_DISABILITY_PERC")&.round(1),
       "over_65_pct" => hood && (100.0 * hood["Older_Adults_65_over"].to_f / [hood["TOTAL_POPULATION"].to_f, 1].max).round(1),
-      # [lat, lon, name, arterial class (0 = not an arterial)]
-      "ints" => none.sort_by { -_1[:lat] }.map { [_1[:lat].round(5), _1[:lon].round(5), _1[:streets].map { |s| pretty(s) }.join(" & "), _1[:art]] },
+      # [lat, lon, name, arterial class (0 = not an arterial), index into "work" or nil]
+      "ints" => none.sort_by { -_1[:lat] }.map { [_1[:lat].round(5), _1[:lon].round(5), _1[:streets].map { |s| pretty(s) }.join(" & "), _1[:art], _1[:work] && renum[_1[:work]]] },
     }
   end
   {
@@ -328,12 +413,15 @@ def budget_data(rows, spots, hood_of, district_of, hoods)
     "ramps_per_intersection" => (built.sum.to_f / built.size).round(1),
     "no_ramp" => actionable.size,
     "cells" => cells.sort_by { -_1["ints"].size },
+    # Scheduled projects that reach a no-ramp intersection (shapes left out).
+    "work" => used.map { work[_1].except("shapes") },
   }
 end
 
 def main
-  ints, ramps, sidewalks, ps, hoods = fetch(ARGV.include?("--refresh"))
+  ints, ramps, sidewalks, ps, hoods, work = fetch(ARGV.include?("--refresh"))
   rows = classify(ints, ramps, sidewalks, ps)
+  match_work(rows, work)
   hood_of = neighborhood_lookup(hoods, "CRA")
   district_of = neighborhood_lookup(hoods, "CD")
   spots = hotspots(rows, hood_of, district_of)
@@ -366,7 +454,7 @@ def main
   File.write(File.join(OUT_DIR, "data.js"),
              "// Generated by scripts/hotspots.rb -- do not edit.\nwindow.HOTSPOTS = #{JSON.generate(data)};\n")
 
-  budget = budget_data(rows, spots, hood_of, district_of, hoods)
+  budget = budget_data(rows, spots, hood_of, district_of, hoods, work)
   FileUtils.mkdir_p(File.join(ROOT, "docs", "seattle", "budget"))
   File.write(File.join(ROOT, "docs", "seattle", "budget", "data.js"),
              "// Generated by scripts/hotspots.rb -- do not edit.\nwindow.BUDGET = #{JSON.generate(budget)};\n")

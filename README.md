@@ -58,9 +58,20 @@ squares in the browser:
 - **Highest score first, whole squares at a time**, so an area becomes walkable end to end.
   Cost is intersections × ramps per intersection × cost per ramp (default $25,000, SDOT's
   2017 planning figure). A square that runs past a year's budget finishes the next year.
+- **Scheduled work:** `hotspots.rb` also downloads the paving and surface improvement
+  layers of [dotMaps](https://streetwork.seattle.gov/map), the city's street work map
+  (`streetwork.seattle.gov/publicapi/temporal_entity/<layer>/`), keeps projects that haven't
+  ended (cancelled ones dropped), and ties each no-ramp intersection to the project within
+  20 m: curb ramp work first, then repaving, then other street work. Repaving is an ADA
+  alteration that requires ramps (DOJ/FHWA, 2013), so intersections with ramp work or
+  repaving coming are left out of the budget by default (`?sched=0` keeps them). Other street
+  projects are flagged as the cheap moment to add ramps. The page lists every project with
+  the missing ramps it reaches. dotMaps covers about two years ahead; SDOT's longer paving
+  plan isn't published as data. (`Seattle_Streets`' `SURFACEDATE_1` looked like a paving
+  history but is mostly bulk dates from 2013–2015 and 2022, so it isn't used.)
 - Shows the yearly count, total cost, years to finish, a map shaded by funding year, the
   plan year by year, and a CSV with one row per intersection. `?budget=`, `?cost=`,
-  `?rpi=`, `?dis=`, `?art=`, `?old=` keep the settings in the link.
+  `?rpi=`, `?dis=`, `?art=`, `?old=`, `?sched=` keep the settings in the link.
 
 ## Outputs
 
@@ -304,6 +315,7 @@ version stays up.
 | SDOT Curb Ramps (Active) | `services.arcgis.com/ZOyb2t4B0UYuYNYH/.../Curb_Ramps_(Active)/FeatureServer/0` | One point per ramp. `CATEGORY` SINGLE/SHARED/NORAMP, `DIRECTION`, `INSTALL_DATE`, `CONDITION` |
 | SDOT Curb Ramp Work Orders | `.../Curb_Ramp_Work_Orders/FeatureServer/0` | Used to flag ramps SDOT has already planned. The free-text `WORKDESC` field is **not** downloaded: it can contain residents' contact details |
 | Project Sidewalk Seattle | `sidewalk-sea.cs.washington.edu/v3/api/rawLabels?bbox=…` | Crowdsourced `CurbRamp` / `NoCurbRamp` labels from street-view imagery. Labels validators marked incorrect are dropped |
+| dotMaps (SDOT) | `streetwork.seattle.gov/publicapi/temporal_entity/{paving,surface_improvement}/` | Scheduled paving and street projects, for the budget planner. Public, no key |
 | OpenStreetMap | Overpass (`overpass-api.de`, then `maps.mail.ru` mirror), falling back to the OSM API `map` call tiled along a narrow corridor | `kerb=lowered/flush/no` = ramp, `kerb=raised/regular` = no ramp |
 
 ## Method

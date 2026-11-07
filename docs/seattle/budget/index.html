@@ -56,6 +56,11 @@
   .year button.link { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; min-height: 24px; }
   .tools { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 0; }
   .tools .btn { background: var(--surface); color: var(--fg); border-color: var(--line); font: 600 15px/1.2 system-ui, sans-serif; cursor: pointer; }
+  .key .dot { width: 12px; height: 12px; border-radius: 50%; background: #7a3fc2; box-shadow: 0 0 0 2px #fff; }
+  .key .ring { width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 3px #7a3fc2; }
+  .sched-item h3 { font-size: 17px; }
+  .year li.pt { grid-template-columns: 1fr; }
+  .sched-item .when { font-weight: 400; font-size: 14px; color: var(--muted); }
   .leaflet-popup-content { font: 14px/1.4 system-ui, sans-serif; }
 </style>
 </head>
@@ -105,13 +110,20 @@
         <label><input type="checkbox" id="w-art" checked> <span>Missing ramps on busier streets <span class="small">(an arterial counts 1.5 times)</span></span></label>
         <label><input type="checkbox" id="w-old"> Neighborhoods with more residents over 65</label>
       </fieldset>
+      <fieldset>
+        <legend>Work the city already has scheduled</legend>
+        <label><input type="checkbox" id="skip-sched" checked> <span>Leave out intersections where curb ramp work or repaving is already scheduled
+          <span class="small">(repaving a street requires building its missing ramps)</span></span></label>
+      </fieldset>
     </form>
     <div class="stat-grid" id="stats" aria-live="polite"></div>
+    <p class="small" id="sched-note"></p>
   </section>
 
   <section class="wrap" aria-labelledby="map-h">
     <h2 id="map-h">The plan on a map</h2>
-    <p class="section-lede">Each square is about four blocks across (450 m). Darker squares get their ramps sooner.</p>
+    <p class="section-lede">Each square is about four blocks across (450 m). Darker squares get their ramps sooner.
+      Purple marks intersections where the city already has work scheduled.</p>
     <p><a class="small" href="#years-h">Skip the map, to the plan year by year</a></p>
     <div id="planmap" role="region" aria-label="Map of the funding order for missing curb ramps"></div>
     <ul class="key" id="key"></ul>
@@ -127,6 +139,15 @@
     </div>
   </section>
 
+  <section class="wrap" aria-labelledby="sched-h">
+    <h2 id="sched-h">Already scheduled: make sure the ramps get built</h2>
+    <p class="section-lede">These city projects, from <a href="https://streetwork.seattle.gov/map">dotMaps</a>, the city's street work map,
+      reach an intersection with no curb ramp. Paving a street and ramp projects should leave ramps behind; other street projects are
+      the cheapest moment to add them, since the crew, traffic plan and design are already paid for. Ask each project to confirm.</p>
+    <ul class="years" id="sched"></ul>
+    <div class="tools"><button class="btn" id="more-sched" type="button" hidden>Show all projects</button></div>
+  </section>
+
   <section class="wrap" aria-labelledby="why-h">
     <h2 id="why-h">How the order is chosen</h2>
     <ul class="prose">
@@ -138,6 +159,10 @@
       <li><strong>The cost of an intersection</strong> is ramps per intersection times cost per ramp. The default for ramps per intersection
         is what SDOT has actually built: the average number of ramps it has recorded at intersections that have any.
         Four-way intersections usually need more, T-intersections fewer.</li>
+      <li><strong>Scheduled work</strong> comes from <a href="https://streetwork.seattle.gov/map">dotMaps</a>' paving and surface improvement layers,
+        refreshed daily: projects that haven't ended and reach within 20 m of an intersection. Under federal guidance from 2013, repaving a street
+        is an alteration that requires curb ramps at its crossings, so those intersections are left out of the budget by default.
+        dotMaps only shows work about two years out; SDOT's longer paving plan isn't published as map data.</li>
       <li><strong>Neighborhood numbers</strong> (disability, age) come from the city's Community Reporting Areas, so every square in a neighborhood shares them.</li>
     </ul>
   </section>
