@@ -207,9 +207,9 @@ function reportIcon(kind, c, n) {
     const bars = [19, 23, 27].map(x => `<rect x="${x}" y="2" width="2" height="10" fill="#fff" opacity=".85"/>`).join("") +
       [19, 23, 27].map(y => `<rect x="2" y="${y}" width="10" height="2" fill="#fff" opacity=".85"/>`).join("");
     body = `<g transform="rotate(${turn} 16 16)"><rect width="32" height="32" fill="${ICON.street}"/>${bars}
-      <path d="M0,0H15V8A7,7 0 0 1 8,15H0Z" fill="${ICON.walk}" stroke="${ICON.edge}" stroke-width=".9"/>
-      <g transform="rotate(-45 11.5 11.5)"><rect x="7" y="9" width="9" height="6" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".6"/>
-        <rect x="7" y="13.2" width="9" height="2" fill="${ICON.pad}"/></g>
+      <path d="M0,0H17V6A11,11 0 0 1 6,17H0Z" fill="${ICON.walk}" stroke="${ICON.edge}" stroke-width=".9"/>
+      <path d="M9.3,8.3L16.6,8.85A11,11 0 0 1 8.85,16.6L8.3,9.3Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".6"/>
+      <path d="M14.26,8.67L16.6,8.85A11,11 0 0 1 8.85,16.6L8.67,14.26A8.7,8.7 0 0 0 14.26,8.67Z" fill="${ICON.pad}"/>
       <path d="M17.5,17.5L25,25" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.4 2"/>
       <path d="M26.6,21.4V26.6H21.4" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>`;
   } else if (kind === "no_warning") {
@@ -248,8 +248,11 @@ function upgradeText(c) {
   if (!list.length || c.overall === "missing") return "";
   const plural = c.overall === "present" && needsOf(c).length > 1;
   const diagonal = list.includes("diagonal"), rest = list.filter(i => i !== "diagonal").map(i => RAMP_ISSUES[i][1]);
-  let text = diagonal ? "The corner has one central ramp aimed at the middle of the intersection instead of a ramp lined up " +
-    "with each crosswalk, so it sends people toward traffic rather than into the crosswalk." : "";
+  // Shared diagonal ramps (Standard Plan 422F) are still built where corners are tight, so
+  // this says what the ramp does, not that it was built wrong.
+  let text = diagonal ? "The corner has one ramp on its curve, aimed at the middle of the intersection rather than " +
+    "lined up with either crosswalk, so people coming down it head toward the middle of the street. " +
+    "A ramp lined up with each crosswalk would fix that." : "";
   if (rest.length) text += `${diagonal ? " The ramp also has: " : `The existing ramp${plural ? "s here: " : " here: "}`}${rest.join(", ")}.`;
   if (list.includes("no_warning")) text += " Without the yellow pad (detectable warning panel), people who are blind or have low vision can't tell where the sidewalk ends.";
   return text.trim();
