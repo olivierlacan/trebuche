@@ -353,11 +353,13 @@ intersection, then to a quadrant.
 ## Checking corners in person
 
 The sources can be years out of date, so the map lets neighbors record what they see.
-On any corner, **Checked it in person?** covers the whole intersection: one dropdown per
-corner (ramps both ways, a ramp for one crossing only, no ramps, or not checked), **All
-have ramps** / **None have ramps** shortcuts, checkboxes for what's wrong with the ramps
-that are there (no yellow warning panel, the older style with crisscross grooves,
-cracked or uneven, a lip at the street edge), and one note. There's no server: checks
+On any corner, **Checked it in person?** covers the whole intersection, with two answers
+per corner: which way its ramps go (**both directions**, **north–south only** for
+crossing the side street, **east–west only** for crossing the main street, **no ramps**, or
+not checked) and whether they have a **yellow pad** (the detectable warning panel).
+Older one-direction ramps without a pad, like every corner of Dayton & N 83rd St, are
+two taps per corner. Shortcuts fill in **All both directions**, **All have yellow
+pads** or **None have ramps**, and one note covers anything else. There's no server: checks
 are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
 street's map) and the corners are redrawn right away for that visitor, with an orange
 check. With location on (the locate button), the form says whether the phone is at the
@@ -375,18 +377,19 @@ is there for people without a GitHub account.
 To publish them, paste the rows into `data/field-checks.csv` and push:
 
 ```
-corner_id,date_checked,ramps_for,ramp_issues,notes,distance_ft,accuracy_ft
-dayton-78-NE,2026-11-07,main+cross,,,15,20
-dayton-83-NW,2026-11-07,cross,no_warning+old_style,,,
+corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
+dayton-80-NE,2026-11-07,main+cross,yes,,,15,20
+dayton-83-NW,2026-11-07,cross,no,old_style,,,
 ```
 
 `ramps_for` names the crossings that had a ramp: `main` (crossing the main street),
 `cross` (crossing the side street), `main+cross`, or `none`. The latest check for a
 corner wins over every other source and sets `overall` (a check that finds no ramp
 counts as confirmed missing), unless SDOT recorded work there after the check.
-`ramp_issues` lists what's wrong with the ramps that are there, joined with `+`:
-`no_warning` (no detectable warning panel, Standard Plan 422k), `old_style` (crisscross
-grooves), `damaged`, `lip`. Corners with any of them say **Needs upgrade**, and their
+`yellow_pad` is `yes`, `no` or blank (not noted). `ramp_issues` lists anything else
+wrong with the ramps, joined with `+`: `old_style` (crisscross grooves), `damaged`,
+`lip`; the form doesn't ask about these, but they can be added from an issue's notes. A
+`no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
 request text asks SDOT to upgrade the ramp as well as add any missing one.
 `distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
 doesn't use them yet, they're there for whoever reviews the issue. The CSV

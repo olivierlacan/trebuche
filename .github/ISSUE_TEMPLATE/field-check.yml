@@ -12,7 +12,7 @@ body:
     id: summary
     attributes:
       label: What you saw
-      description: One line per intersection, e.g. "Dayton Ave N & N 79th St, ramps both ways at all 4 corners".
+      description: One line per intersection, e.g. "Dayton Ave N & N 83rd St, north–south only without yellow pad at all 4 corners".
     validations:
       required: true
   - type: textarea
@@ -24,7 +24,7 @@ body:
     id: rows
     attributes:
       label: Rows for data/field-checks.csv
-      description: Filled in by the map. corner_id, date_checked, ramps_for (main, cross, main+cross or none), ramp_issues (no_warning, old_style, damaged, lip), notes, and how far the phone was from the corner when the check was saved.
+      description: Filled in by the map. corner_id, date_checked, ramps_for (main = east–west, cross = north–south, main+cross or none), yellow_pad (yes or no), ramp_issues (old_style, damaged, lip), notes, and how far the phone was from the corner when the check was saved.
       render: csv
   - type: input
     id: map

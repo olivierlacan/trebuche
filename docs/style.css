@@ -71,7 +71,11 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .check-form .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
   border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
 .check-grid { border-collapse: collapse; margin: 6px 0; width: 100%; }
-.check-grid th { text-align: left; font-size: 14px; width: 3.2em; padding: 4px 6px 4px 0; }
+.check-grid th { text-align: left; font-size: 14px; padding: 4px 6px 4px 0; }
+.check-grid th[scope=row] { width: 3em; }
+.check-grid th[scope=col] { font-size: 12px; font-weight: 600; color: var(--muted); padding-bottom: 0; }
+.check-grid th[scope=col]:last-child { width: 6em; }
+.check-grid td { padding: 3px 0 3px 6px; }
 .check-grid tr.here th { text-decoration: underline 3px var(--checked); text-underline-offset: 4px; }
 .check-grid select { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; border: 1px solid var(--line);
   border-radius: 6px; background: var(--bg); color: var(--fg); }

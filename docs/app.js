@@ -165,7 +165,9 @@ const RAMP_ISSUES = {
 const issueList = v => (v || "").split("+").filter(k => RAMP_ISSUES[k]);
 const issuesText = v => issueList(v).map(k => RAMP_ISSUES[k][1]).join(", ");
 // The ramp issues that apply to a corner: your own check first, then the published one.
-const rampIssues = c => (checks[c.corner_id] ? checks[c.corner_id].issues : c.field_issues) || "";
+// A check's yellow-pad answer ("yes"/"no") is kept apart from its other issues.
+const checkIssues = k => [...issueList(k.issues).filter(i => i !== "no_warning"), ...(k.pad === "no" ? ["no_warning"] : [])].join("+");
+const rampIssues = c => (checks[c.corner_id] ? checkIssues(checks[c.corner_id]) : c.field_issues) || "";
 function upgradeText(c) {
   if (!issuesText(rampIssues(c)) || c.overall === "missing") return "";
   const plural = c.overall === "present" && needsOf(c).length > 1;
@@ -179,7 +181,7 @@ function evidence(c) {
   const out = [];
   const k = checks[c.corner_id];
   const iss = s => (issuesText(s) ? ` Ramp condition: ${issuesText(s)}.` : "");
-  if (k) out.push(`Checked in person on ${k.date}: ${checkText(c, k.ramps_for)}.${iss(k.issues)}${k.notes ? ` ${k.notes}` : ""}`);
+  if (k) out.push(`Checked in person on ${k.date}: ${checkText(c, k.ramps_for)}.${k.pad === "yes" ? " Yellow warning panel: yes." : ""}${iss(checkIssues(k))}${k.notes ? ` ${k.notes}` : ""}`);
   else if (c.field_date) out.push(`A neighbor checked in person on ${c.field_date}: ${checkText(c, c.field_covers || "none")}.${iss(c.field_issues)}${c.field_notes ? ` ${c.field_notes}` : ""}`);
   if (c.city === "no record") out.push("SDOT's curb ramp inventory has no ramp recorded at this corner.");
   else if (c.city === "unassessed") out.push("SDOT's inventory only has unassessed placeholder records here (no built ramp).");
@@ -466,7 +468,6 @@ function renderCorner() {
   const mine = checks[c.corner_id];
   const here = intersectionCorners(c);
   const noteNow = here.map(x => checks[x.corner_id]?.notes).find(Boolean) || "";
-  const issuesNow = here.map(x => checks[x.corner_id]?.issues).find(Boolean) || "";
 
   el.innerHTML = `
     <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
@@ -499,24 +500,29 @@ function renderCorner() {
       <p class="small">If the map is wrong, say what you saw at each corner of this intersection. It's saved
         in this browser, so you can do a whole walk and send everything at once from
         <button class="link" type="button" data-goto="checks">Checks</button>.</p>
-      <table class="check-grid">${here.map(x => `<tr${x.corner_id === c.corner_id ? ' class="here"' : ""}>
-        <th scope="row"><label for="ck-${esc(x.corner)}">${esc(x.corner)}</label></th>
-        <td><select id="ck-${esc(x.corner)}" name="${esc(x.corner_id)}">${checkOptions(x).map(([v, label]) =>
-          `<option value="${v}"${(checks[x.corner_id]?.ramps_for || "") === v ? " selected" : ""}>${esc(label)}</option>`).join("")}
-        </select></td></tr>`).join("")}
+      <table class="check-grid">
+        <tr><th scope="col">Corner</th><th scope="col">Ramps</th><th scope="col">Yellow pad</th></tr>
+        ${here.map(x => {
+          const k = checks[x.corner_id] || {};
+          const opt = (v, label, cur) => `<option value="${v}"${(cur || "") === v ? " selected" : ""}>${esc(label)}</option>`;
+          return `<tr${x.corner_id === c.corner_id ? ' class="here"' : ""}>
+          <th scope="row">${esc(x.corner)}</th>
+          <td><select name="${esc(x.corner_id)}" aria-label="${esc(x.corner)} corner: ramps">
+            ${checkOptions(x).map(([v, label]) => opt(v, label, k.ramps_for)).join("")}</select></td>
+          <td><select name="pad-${esc(x.corner_id)}" aria-label="${esc(x.corner)} corner: yellow pad">
+            ${opt("", "?", k.pad)}${opt("yes", "Yes", k.pad)}${opt("no", "No", k.pad)}</select></td></tr>`;
+        }).join("")}
       </table>
+      ${needsOf(c).length > 1 ? `<p class="small">North–south: ramps for crossing ${esc(baseStreet(c))}. East–west: ramps for crossing ${esc(MAIN_STREET)}.
+        A corner should have both. "Yellow pad" is the panel of raised bumps at the bottom of the ramp.</p>` : ""}
       <div class="buttons">
-        <button class="button" type="button" data-fill="ramps">All have ramps</button>
+        <button class="button" type="button" data-fill="ramps">All both directions</button>
+        <button class="button" type="button" data-fill="pads">All have yellow pads</button>
         <button class="button" type="button" data-fill="none">None have ramps</button>
       </div>
-      <fieldset class="issues"><legend>The ramps that are there (check any that apply)</legend>
-        ${Object.entries(RAMP_ISSUES).map(([k, [label]]) => `<label class="check"><input type="checkbox" name="issue" value="${k}"
-          ${issueList(issuesNow).includes(k) ? "checked" : ""}> ${esc(label)}</label>`).join("")}
-        <p class="small">Applies to every corner above that has a ramp. If corners differ, say so in the note.</p>
-      </fieldset>
       <label class="field">Note (optional)
         <input type="text" name="notes" maxlength="200" value="${esc(noteNow)}"
-          placeholder="e.g. new ramps, no yellow warning panel at SW"></label>
+          placeholder="e.g. older ramps with crisscross grooves"></label>
       <p class="small" id="check-where">${whereText(c)}</p>
       <div class="buttons"><button class="button primary" type="submit">Save</button></div>
       <p class="small">Choose "Not checked" to remove a check.</p>
@@ -556,17 +562,18 @@ document.getElementById("corner-detail").addEventListener("click", e => {
 document.getElementById("corner-detail").addEventListener("click", e => {
   const b = e.target.closest("[data-fill]");
   if (!b) return;
-  b.form.querySelectorAll("select").forEach(sel => {
-    const x = byId.get(sel.name);
-    sel.value = b.dataset.fill === "none" ? "none" : needsOf(x).join("+");
-  });
+  for (const x of intersectionCorners(byId.get(state.corner))) {
+    const ramps = b.form.elements[x.corner_id], pad = b.form.elements[`pad-${x.corner_id}`];
+    if (b.dataset.fill === "ramps") ramps.value = needsOf(x).join("+");
+    if (b.dataset.fill === "none") { ramps.value = "none"; pad.value = ""; }
+    if (b.dataset.fill === "pads") { pad.value = "yes"; if (!ramps.value || ramps.value === "none") ramps.value = needsOf(x).join("+"); }
+  }
 });
 document.getElementById("corner-detail").addEventListener("submit", e => {
   if (!e.target.matches("[data-check-form]")) return;
   e.preventDefault();
   const f = new FormData(e.target), date = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
   const notes = String(f.get("notes") || "").trim().replace(/\s+/g, " ");
-  const allIssues = f.getAll("issue").join("+");
   let saved = 0;
   for (const x of intersectionCorners(byId.get(state.corner))) {
     const v = f.get(x.corner_id);
@@ -574,9 +581,11 @@ document.getElementById("corner-detail").addEventListener("submit", e => {
     else {
       const old = checks[x.corner_id];
       // Re-saving the same answer keeps its date and "sent" mark.
-      const fix = onSite(x), issues = v === "none" ? "" : allIssues;
-      checks[x.corner_id] = old && old.ramps_for === v && (old.notes || "") === notes && (old.issues || "") === issues &&
-        (!fix || old.distance_ft) ? old : { date, ramps_for: v, issues, notes, ...fix };
+      // Issues the form doesn't ask about (e.g. old_style from an earlier version) are kept.
+      const fix = onSite(x), pad = v === "none" ? "" : f.get(`pad-${x.corner_id}`) || "";
+      const issues = v === "none" ? "" : issueList(old?.issues).filter(i => i !== "no_warning").join("+");
+      checks[x.corner_id] = old && old.ramps_for === v && (old.pad || "") === pad && (old.notes || "") === notes &&
+        (!fix || old.distance_ft) ? old : { date, ramps_for: v, pad, issues, notes, ...fix };
       saved++;
     }
     applyCheck(x);
@@ -630,17 +639,19 @@ function intersectionCorners(c) {
 function checkOptions(c) {
   const n = needsOf(c);
   if (n.length === 1) return [["", "Not checked"], [n[0], "Ramp"], ["none", "No ramp"]];
-  return [["", "Not checked"], ["main+cross", "Ramps both ways"],
-    ["main", `Ramp crossing ${AREA.short} only`], ["cross", `Ramp crossing ${baseStreet(c)} only`], ["none", "No ramps"]];
+  // Every street so far runs north–south, so crossing it means walking east–west.
+  return [["", "Not checked"], ["main+cross", "Both directions"],
+    ["cross", "North–south only"], ["main", "East–west only"], ["none", "No ramps"]];
 }
 
 // ------------------------------------------------------------------ checks: review + send
 const csvCell = v => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 function checksCsv(cs) {
-  return ["corner_id,date_checked,ramps_for,ramp_issues,notes,distance_ft,accuracy_ft",
+  return ["corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft",
     ...cs.map(c => {
       const k = checks[c.corner_id];
-      return [c.corner_id, k.date, k.ramps_for, k.issues || "", k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
+      const other = issueList(k.issues).filter(i => i !== "no_warning").join("+");
+      return [c.corner_id, k.date, k.ramps_for, k.pad || "", other, k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
     }),
   ].join("\n");
 }
@@ -649,11 +660,12 @@ const answerLabel = (c, v) => checkOptions(c).find(([k]) => k === v)?.[1].replac
 function intersectionSummary(cs) {
   const byAnswer = new Map();
   for (const c of cs) {
-    const label = answerLabel(c, checks[c.corner_id].ramps_for);
+    const k = checks[c.corner_id];
+    const label = answerLabel(c, k.ramps_for) + (k.ramps_for === "none" ? "" : k.pad === "yes" ? " with yellow pad" : k.pad === "no" ? " without yellow pad" : "");
     byAnswer.set(label, [...(byAnswer.get(label) || []), c.corner]);
   }
   const total = intersectionCorners(cs[0]).length;
-  const issues = [...new Set(cs.map(c => issuesText(checks[c.corner_id].issues)).filter(Boolean))];
+  const issues = [...new Set(cs.map(c => issuesText(issueList(checks[c.corner_id].issues).filter(i => i !== "no_warning").join("+"))).filter(Boolean))];
   return [...byAnswer].map(([label, where]) =>
     `${label} ${where.length === total && total > 1 ? `at all ${total} corners` : `at ${where.join(", ")}`}`).join("; ") +
     (issues.length ? `; ramps: ${issues.join("; ")}` : "");
