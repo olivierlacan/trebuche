@@ -443,9 +443,8 @@ function renderCorner() {
   const srcRow = (name, value, extra) => `<tr><th>${name}</th><td>${esc(value)}${extra ? `<br><span class="small">${extra}</span>` : ""}</td></tr>`;
   const wos = (c.work_orders || []).filter(w => workState(w));
   const mine = checks[c.corner_id];
-  const seen = mine ? coveredBy(mine.ramps_for) : null;
-  const radio = (n, v, label) => `<label class="check"><input type="radio" name="ck-${n}" value="${v}"
-    ${seen && seen.includes(n) === (v === "yes") ? "checked" : ""}> ${label}</label>`;
+  const here = intersectionCorners(c);
+  const noteNow = here.map(x => checks[x.corner_id]?.notes).find(Boolean) || "";
 
   el.innerHTML = `
     <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
@@ -474,17 +473,24 @@ function renderCorner() {
 
     <h2>Checked it in person?</h2>
     <form class="check-form" data-check-form>
-      <p class="small">If the map is wrong here, say what you saw. It's saved in this browser, so you can check
-        several corners and send them all at once from <button class="link" type="button" data-goto="checks">Checks</button>.</p>
-      ${needsOf(c).map(n => `<fieldset><legend>Curb ramp ${esc(crossingName(c, n))}?</legend>
-        ${radio(n, "yes", "Yes, a ramp")}${radio(n, "no", "No ramp (raised curb)")}</fieldset>`).join("")}
-      <label class="field">Note (optional)
-        <input type="text" name="notes" maxlength="200" value="${esc(mine?.notes || "")}"
-          placeholder="e.g. ramp has no yellow warning panel"></label>
+      <p class="small">If the map is wrong, say what you saw at each corner of this intersection. It's saved
+        in this browser, so you can do a whole walk and send everything at once from
+        <button class="link" type="button" data-goto="checks">Checks</button>.</p>
+      <table class="check-grid">${here.map(x => `<tr${x.corner_id === c.corner_id ? ' class="here"' : ""}>
+        <th scope="row"><label for="ck-${esc(x.corner)}">${esc(x.corner)}</label></th>
+        <td><select id="ck-${esc(x.corner)}" name="${esc(x.corner_id)}">${checkOptions(x).map(([v, label]) =>
+          `<option value="${v}"${(checks[x.corner_id]?.ramps_for || "") === v ? " selected" : ""}>${esc(label)}</option>`).join("")}
+        </select></td></tr>`).join("")}
+      </table>
       <div class="buttons">
-        <button class="button primary" type="submit">${mine ? "Update check" : "Save check"}</button>
-        ${mine ? `<button class="button" type="button" data-action="remove-check">Remove my check</button>` : ""}
+        <button class="button" type="button" data-fill="ramps">All have ramps</button>
+        <button class="button" type="button" data-fill="none">None have ramps</button>
       </div>
+      <label class="field">Note (optional)
+        <input type="text" name="notes" maxlength="200" value="${esc(noteNow)}"
+          placeholder="e.g. new ramps, no yellow warning panel at SW"></label>
+      <div class="buttons"><button class="button primary" type="submit">Save</button></div>
+      <p class="small">Choose "Not checked" to remove a check.</p>
     </form>
 
     <h2>What each source says</h2>
@@ -517,32 +523,50 @@ document.getElementById("corner-detail").addEventListener("click", e => {
   if (b.dataset.action === "copy-request") copy(requestText(c), "Request text copied");
   if (b.dataset.action === "copy-link") copy(shareUrl({ corner: shortId(c.corner_id) }), "Link copied");
   if (b.dataset.action === "toggle-select") { toggleSelected(c.corner_id); renderCorner(); }
-  if (b.dataset.action === "remove-check") { setCheck(c, null); toast("Check removed"); }
+});
+document.getElementById("corner-detail").addEventListener("click", e => {
+  const b = e.target.closest("[data-fill]");
+  if (!b) return;
+  b.form.querySelectorAll("select").forEach(sel => {
+    const x = byId.get(sel.name);
+    sel.value = b.dataset.fill === "none" ? "none" : needsOf(x).join("+");
+  });
 });
 document.getElementById("corner-detail").addEventListener("submit", e => {
   if (!e.target.matches("[data-check-form]")) return;
   e.preventDefault();
-  const c = byId.get(state.corner), f = new FormData(e.target);
-  const answers = needsOf(c).map(n => [n, f.get(`ck-${n}`)]);
-  if (answers.some(([, v]) => !v)) return toast("Answer yes or no for each crossing");
-  const covered = answers.filter(([, v]) => v === "yes").map(([n]) => n);
-  setCheck(c, {
-    date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local
-    ramps_for: covered.length ? covered.join("+") : "none",
-    notes: String(f.get("notes") || "").trim().replace(/\s+/g, " "),
-  });
-  toast(`Check saved in this browser (${myChecks().length} to send)`);
-});
-
-function setCheck(c, check) {
-  if (check) checks[c.corner_id] = check;
-  else delete checks[c.corner_id];
+  const f = new FormData(e.target), date = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
+  const notes = String(f.get("notes") || "").trim().replace(/\s+/g, " ");
+  let saved = 0;
+  for (const x of intersectionCorners(byId.get(state.corner))) {
+    const v = f.get(x.corner_id);
+    if (!v) { delete checks[x.corner_id]; }
+    else {
+      const old = checks[x.corner_id];
+      // Re-saving the same answer keeps its date and "sent" mark.
+      checks[x.corner_id] = old && old.ramps_for === v && (old.notes || "") === notes ? old : { date, ramps_for: v, notes };
+      saved++;
+    }
+    applyCheck(x);
+    refreshMarker(x.corner_id);
+  }
   saveChecks();
-  applyCheck(c);
-  refreshMarker(c.corner_id);
   renderCorner();
   renderChecks();
   renderList();
+  toast(saved ? `Saved in this browser (${myChecks().length} to send)` : "Checks removed");
+});
+
+function intersectionCorners(c) {
+  const order = ["NW", "NE", "SW", "SE"];
+  return corners.filter(x => x.intersection_id === c.intersection_id)
+    .sort((a, b) => order.indexOf(a.corner) - order.indexOf(b.corner));
+}
+function checkOptions(c) {
+  const n = needsOf(c);
+  if (n.length === 1) return [["", "Not checked"], [n[0], "Ramp"], ["none", "No ramp"]];
+  return [["", "Not checked"], ["main+cross", "Ramps both ways"],
+    ["main", `Ramp crossing ${AREA.short} only`], ["cross", `Ramp crossing ${baseStreet(c)} only`], ["none", "No ramps"]];
 }
 
 // ------------------------------------------------------------------ checks: review + send
@@ -552,17 +576,37 @@ function checksCsv(cs) {
     ...cs.map(c => { const k = checks[c.corner_id]; return [c.corner_id, k.date, k.ramps_for, k.notes || ""].map(csvCell).join(","); }),
   ].join("\n");
 }
+// "N 79th St: ramps both ways at all 4 corners" / "N 78th St: ramps both ways at NE, SE; no ramps at SW"
+const answerLabel = (c, v) => checkOptions(c).find(([k]) => k === v)?.[1].replace(/^\w/, ch => ch.toLowerCase()) || v;
+function intersectionSummary(cs) {
+  const byAnswer = new Map();
+  for (const c of cs) {
+    const label = answerLabel(c, checks[c.corner_id].ramps_for);
+    byAnswer.set(label, [...(byAnswer.get(label) || []), c.corner]);
+  }
+  const total = intersectionCorners(cs[0]).length;
+  return [...byAnswer].map(([label, where]) =>
+    `${label} ${where.length === total && total > 1 ? `at all ${total} corners` : `at ${where.join(", ")}`}`).join("; ");
+}
+const checkGroups = cs => groupByIntersection(cs).map(g => [`${MAIN_STREET} & ${baseStreet(g[0])}`, g]);
+
 function checksIssueUrl(cs, csvInBody = true) {
-  const title = `Checked in person: ${cs.length === 1 ? cornerTitle(cs[0]) : `${cs.length} corners on ${MAIN_STREET}`}`;
+  const groups = checkGroups(cs);
+  const title = `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`;
+  const notes = [...new Set(cs.map(c => checks[c.corner_id].notes).filter(Boolean))];
   const body = [
     "<!-- Please don't include your name, phone, or email. -->",
     "",
-    `What neighbors saw at ${cs.length === 1 ? "this corner" : "these corners"}, recorded on the map. ` +
-      "Rows go into `data/field-checks.csv` as is.",
+    ...groups.map(([name, g]) => `- **${name}**: ${intersectionSummary(g)}`),
+    ...(notes.length ? ["", ...notes.map(n => `> ${n}`)] : []),
     "",
-    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(The rows were too long for a link: paste them here.)"]),
+    "### Photos (optional)",
     "",
-    ...cs.map(c => `- ${cornerTitle(c)}: ${checkText(c, checks[c.corner_id].ramps_for)}`),
+    "Drag photos of the corners into this box, or attach them from your phone. One per corner, taken from the sidewalk, is plenty.",
+    "",
+    "### Rows for `data/field-checks.csv`",
+    "",
+    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(Too long for a link: paste the rows from your clipboard here.)"]),
     "",
     `Map: ${shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" })}`,
   ].join("\n");
@@ -579,21 +623,24 @@ function renderChecks() {
     el.innerHTML = `<p>No checks saved in this browser. Open a corner on the map and use <strong>Checked it in person?</strong></p>`;
     return;
   }
+  const n = checkGroups(cs).length;
   el.innerHTML = `
-    <ul class="checks">${cs.map(c => {
-      const k = checks[c.corner_id];
-      return `<li><button class="link" data-focus-check="${esc(c.corner_id)}">${esc(cornerTitle(c))}</button><br>
-        <span class="small">${esc(k.date)}: ${esc(checkText(c, k.ramps_for))}${k.notes ? `. ${esc(k.notes)}` : ""}
-        ${k.sent ? ` · sent ${esc(k.sent)}` : ""}</span></li>`;
+    <ul class="checks">${checkGroups(cs).map(([name, g]) => {
+      const dates = [...new Set(g.map(c => checks[c.corner_id].date))].join(", ");
+      const sent = g.every(c => checks[c.corner_id].sent) ? ` · sent ${esc(checks[g[0].corner_id].sent)}` : "";
+      const notes = [...new Set(g.map(c => checks[c.corner_id].notes).filter(Boolean))].join(" ");
+      return `<li><button class="link" data-focus-check="${esc(g[0].corner_id)}">${esc(name)}</button><br>
+        <span class="small">${esc(intersectionSummary(g))}${notes ? `. ${esc(notes)}` : ""}<br>${esc(dates)}${sent}</span></li>`;
     }).join("")}</ul>
     <div class="buttons">
-      <button class="button primary" data-check-action="send">Send ${cs.length === 1 ? "this check" : `these ${cs.length} checks`} on GitHub</button>
+      <button class="button primary" data-check-action="send">Send ${n === 1 ? "this intersection" : `these ${n} intersections`} on GitHub</button>
       <button class="button" data-check-action="copy">Copy as CSV</button>
       <button class="button" data-check-action="forget">Forget all</button>
     </div>
-    <p class="small">Sending opens a new GitHub issue with your checks filled in (you need a free GitHub account).
-      Once a maintainer adds them to the data, everyone sees the corrected corners and the checks clear here
-      on their own. No GitHub account? Use <strong>Copy as CSV</strong> and send the text to whoever runs this map.</p>`;
+    <p class="small">Sending opens a new GitHub issue with your checks filled in (you need a free GitHub account),
+      where you can also add photos. Once they're added to the data, everyone sees the corrected corners and the
+      checks clear here on their own. No GitHub account? Use <strong>Copy as CSV</strong> and send the text to
+      whoever runs this map.</p>`;
 }
 document.getElementById("checks-body").addEventListener("click", e => {
   const f = e.target.closest("[data-focus-check]");
@@ -658,7 +705,7 @@ function letterText(cs) {
   const missing = cs.filter(c => c.overall === "missing").length;
   const partial = cs.filter(c => c.overall === "partial").length;
   const streets = [...new Set(cs.map(baseStreet))];
-  const onHold = cs.filter(c => (c.sdot_projects || "").includes("on-hold"));
+  const onHold = cs.filter(c => needsWork(c) && (c.sdot_projects || "").includes("on-hold"));
   return [
     "To the Seattle Department of Transportation and our councilmember,",
     "",
@@ -740,7 +787,8 @@ document.getElementById("pane-group").addEventListener("click", e => {
 
 // On-hold project tip
 (() => {
-  const onHold = corners.filter(c => (c.sdot_projects || "").includes("on-hold"));
+  // Corners where the ramps turn out to be built (checked in person) don't need the project restarted.
+  const onHold = corners.filter(c => needsWork(c) && (c.sdot_projects || "").includes("on-hold"));
   if (!onHold.length) return;
   const where = [...new Set(onHold.map(baseStreet))].join(" and ");
   document.getElementById("on-hold-tip").innerHTML =

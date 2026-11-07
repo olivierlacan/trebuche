@@ -159,9 +159,9 @@ Checked against seattle.gov on 2026-11-01:
   [web portal](https://seattle-cwiprod.motorolasolutions.com/).
 - **As a group:** split packets between eligible neighbors, send the drafted letter to
   your councilmember and SDOT, and comment at SDOT's Pedestrian Access Advisory
-  Committee or the Seattle Pedestrian Advisory Board. Ramps at 64th and 79th are already
+  Committee or the Seattle Pedestrian Advisory Board. Ramps at 64th are already
   in SDOT's "2023 PEMS DWW ramps on-hold" project, so the letter asks for it to be
-  restarted.
+  restarted. (79th was in it too; a neighbor found its ramps built in November 2026.)
 
 **I filed this** opens a prefilled GitHub issue (corner IDs, channel, date, tracking
 number) so the group can see what's been filed. It asks people not to post contact
@@ -352,15 +352,18 @@ intersection, then to a quadrant.
 
 ## Checking corners in person
 
-The sources can be years out of date, so the map lets neighbors record what they see. On
-a corner, **Checked it in person?** asks, for each crossing the corner needs, whether
-there's a ramp, plus an optional note. There's no server: checks are saved in the
-browser (`localStorage`, key `trebuche:checks`, shared by every street's map) and the
-corner is redrawn right away for that visitor, with an orange check. They can check
-several corners on one walk and send them together from the **Checks** tab, which opens
-a prefilled GitHub issue (label `field-check`) with the rows as CSV. If the link would be
-too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV** is
-there for people without a GitHub account.
+The sources can be years out of date, so the map lets neighbors record what they see.
+On any corner, **Checked it in person?** covers the whole intersection: one dropdown per
+corner (ramps both ways, a ramp for one crossing only, no ramps, or not checked), **All
+have ramps** / **None have ramps** shortcuts, and one note. There's no server: checks
+are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
+street's map) and the corners are redrawn right away for that visitor, with an orange
+check. A whole walk can go out at once from the **Checks** tab, which opens a prefilled
+GitHub issue (label `field-check`): one line per intersection ("ramps both ways at all
+4 corners"), a Photos section to drag pictures into (GitHub hosts them; a link can't
+attach files, so this is the one manual step), and the rows as CSV. If the link would
+be too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV**
+is there for people without a GitHub account.
 
 To publish them, paste the rows into `data/field-checks.csv` and push:
 

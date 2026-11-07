@@ -69,8 +69,13 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .check-form .field { display: block; font-size: 14px; margin: 8px 0; }
 .check-form .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
   border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
-.checks { list-style: none; padding: 0; margin: 8px 0; }
-.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
+.check-grid { border-collapse: collapse; margin: 6px 0; width: 100%; }
+.check-grid th { text-align: left; font-size: 14px; width: 3.2em; padding: 4px 6px 4px 0; }
+.check-grid tr.here th { color: var(--checked); }
+.check-grid select { width: 100%; padding: 6px 8px; font: inherit; font-size: 14px; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--bg); color: var(--fg); }
+ul.checks { list-style: none; padding: 0; margin: 8px 0; }
+ul.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
 
 .lede { margin: 14px 0 4px; }
 .small { font-size: 13px; color: var(--muted); }
