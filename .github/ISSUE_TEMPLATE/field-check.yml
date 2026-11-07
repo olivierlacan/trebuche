@@ -1,0 +1,32 @@
+# Opened prefilled from the map's Checks tab: each field's id is a query parameter
+# (issues/new?template=field-check.yml&summary=...&rows=...&map=...).
+name: Checked in person
+description: Corners you checked on the street. Easiest to send from the map's Checks tab, which fills this in.
+title: "Checked in person: "
+labels: [field-check]
+body:
+  - type: markdown
+    attributes:
+      value: Please don't include your name, phone, or email.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What you saw
+      description: One line per intersection, e.g. "Dayton Ave N & N 83rd St: no ramp east–west, no yellow pad, older crisscross style at all 4 corners".
+    validations:
+      required: true
+  - type: textarea
+    id: photos
+    attributes:
+      label: Photos (optional)
+      description: Drag photos of the corners here, or attach them from your phone. One per corner, taken from the sidewalk, is plenty.
+  - type: textarea
+    id: rows
+    attributes:
+      label: Rows for data/field-checks.csv
+      description: Filled in by the map. corner_id, date_checked, ramps_for (main = east–west, cross = north–south, main+cross or none), yellow_pad (yes or no), ramp_issues (old_style, damaged, lip), notes, and how far the phone was from the corner when the check was saved.
+      render: csv
+  - type: input
+    id: map
+    attributes:
+      label: Map link

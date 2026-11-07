@@ -1,0 +1,9 @@
+corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
+dayton-79-NE,2026-11-07,main+cross,,,New ramps at all four corners,,
+dayton-79-NW,2026-11-07,main+cross,,,New ramps at all four corners,,
+dayton-79-SE,2026-11-07,main+cross,,,New ramps at all four corners,,
+dayton-79-SW,2026-11-07,main+cross,,,New ramps at all four corners,,
+dayton-83-NE,2026-11-07,cross,no,old_style,Older ramps with crisscross grooves; north-south only at every corner,,
+dayton-83-NW,2026-11-07,cross,no,old_style,Older ramps with crisscross grooves; north-south only at every corner,,
+dayton-83-SE,2026-11-07,cross,no,old_style,Older ramps with crisscross grooves; north-south only at every corner,,
+dayton-83-SW,2026-11-07,cross,no,old_style,Older ramps with crisscross grooves; north-south only at every corner,,

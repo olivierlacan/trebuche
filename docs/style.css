@@ -10,17 +10,23 @@
   --ongoing: #e0389a;
   --filed: #138a72;
   --selected: #1f5fae;
+  --checked: #c2410c;
+  --checked-soft: #fde7da;
+  --checked-text: #b13c0b;
+  --street: #ffffff;
   --panel-w: 400px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #17181a; --fg: #ececec; --muted: #a4a7ab; --line: #34363a; --soft: #222326;
     --accent: #78a9ec; --accent-fg: #0d1520;
+    --checked-soft: #4a2414; --street: #3a3c40; --checked-text: #f59a6b;
   }
 }
 :root[data-theme="dark"] {
   --bg: #17181a; --fg: #ececec; --muted: #a4a7ab; --line: #34363a; --soft: #222326;
   --accent: #78a9ec; --accent-fg: #0d1520;
+  --checked-soft: #4a2414; --street: #3a3c40; --checked-text: #f59a6b;
 }
 
 * { box-sizing: border-box; }
@@ -61,6 +67,30 @@ h3 { font-size: 16px; margin: 0 0 4px; }
 .tabs button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .tabs .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px; border-radius: 9px;
   background: var(--selected); color: #fff; font-size: 11px; text-align: center; }
+.tabs .count.checks { background: var(--checked); }
+.report .field { display: block; font-size: 14px; margin: 8px 0; }
+.report .field input { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.check-diagram { margin: 8px 0; }
+.check-diagram svg { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+.check-diagram .corner { cursor: pointer; }
+.check-diagram svg { width: 180px; }
+.check-diagram .corner-name { font: 600 15px system-ui, sans-serif; fill: var(--fg); }
+.check-diagram .street-name { font: 12px system-ui, sans-serif; fill: var(--muted); }
+.where:empty { display: none; }
+.report { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin: 12px 0; background: var(--bg); }
+.report[open] { padding-bottom: 4px; border-color: var(--checked); }
+.report summary { cursor: pointer; font-weight: 600; padding: 10px 0; color: var(--checked-text); }
+.report-list { margin: 4px 0 8px; }
+.report-list .check { margin: 0; padding: 7px 0; border-top: 1px solid var(--line); }
+.report-list .check:first-child { border-top: 0; }
+.report-list input[type=checkbox] { width: 22px; height: 22px; flex: none; }
+.report-icon { flex: none; border-radius: 6px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
+.report-list .check { gap: 10px; }
+.report-list input:disabled ~ * { opacity: .45; }
+.report .button .report-icon { width: 24px; height: 24px; vertical-align: middle; margin: -4px 8px -4px -4px; }
+ul.checks { list-style: none; padding: 0; margin: 8px 0; }
+ul.checks li { border-top: 1px solid var(--line); padding: 8px 0; }
 
 .lede { margin: 14px 0 4px; }
 .small { font-size: 13px; color: var(--muted); }
@@ -91,6 +121,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .status { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 13px; color: #fff; font-weight: 600; }
 .status.missing { background: #222; }
 .status.partial { background: #b2651a; }
+.status.upgrade { background: #8a6d00; }
 .status.present { background: #1a8a4a; }
 .status.unsure { background: #6b6b6b; }
 .status.planned { background: var(--planned); }

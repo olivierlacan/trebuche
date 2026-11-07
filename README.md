@@ -83,6 +83,7 @@ same `data.js` as the map, so they update with the daily refresh.
   which crossing lacks a ramp, the evidence, and a link back to the corner), links to the
   right city form, and **I filed this**.
 - **How to request:** who can use which city channel (below).
+- **Checks:** corners you've checked in person (below), and a button to send them.
 - **Group:** pick corners. The page splits them into packets of at most two intersections
   (SDOT's limit per form), drafts a neighborhood letter, and gives one link to the whole
   selection.
@@ -132,6 +133,7 @@ means SDOT has no install date, which is true for more than half of the ramps.
 | purple dashed ring | SDOT has an open work order here (planned construction or a resident request) |
 | pink ring | SDOT work whose dates overlap the current week (opened on or before this week, estimated done this week or later), or that closed this week |
 | green dot | A neighbor has filed a request (from `data/requests.csv`) |
+| orange check | Someone checked this corner in person (from `data/field-checks.csv`, or your own unsent checks) |
 | blue box | Corner is in your group request |
 | small dots / rings | Every SDOT ramp nearby by install date, and SDOT work orders away from Dayton |
 
@@ -157,9 +159,9 @@ Checked against seattle.gov on 2026-11-01:
   [web portal](https://seattle-cwiprod.motorolasolutions.com/).
 - **As a group:** split packets between eligible neighbors, send the drafted letter to
   your councilmember and SDOT, and comment at SDOT's Pedestrian Access Advisory
-  Committee or the Seattle Pedestrian Advisory Board. Ramps at 64th and 79th are already
+  Committee or the Seattle Pedestrian Advisory Board. Ramps at 64th are already
   in SDOT's "2023 PEMS DWW ramps on-hold" project, so the letter asks for it to be
-  restarted.
+  restarted. (79th was in it too; a neighbor found its ramps built in November 2026.)
 
 **I filed this** opens a prefilled GitHub issue (corner IDs, channel, date, tracking
 number) so the group can see what's been filed. It asks people not to post contact
@@ -347,6 +349,58 @@ intersection, then to a quadrant.
 - Each corner is placed 9 m diagonally from the intersection center for display.
   Positions are approximate.
 - Before filing a request, check conflicts and partials on the ground (or in Street View).
+
+## Checking corners in person
+
+The sources can be years out of date, so the map lets neighbors record what they see.
+Reports go one corner at a time, the corner open in the panel. Under its status, **Report
+what's here** opens a short checklist for that corner: **No ramp to cross** each street
+it needs a ramp for, **No yellow pad**, **Older crisscross style**, **Cracked or uneven**
+and **Lip at street edge**, each with a small drawing of what to look for (the missing-ramp
+ones show the street to cross and which curb, turned to match the corner). Each tick is
+saved right away. **Nothing wrong here** records
+a good corner in one tap, and **Same as NW** (the last corner reported at that
+intersection) copies it, so Dayton & N 83rd St, where all four corners have the same
+older ramps, is one corner's ticks and then three taps. A small plan of the intersection
+shows what's been reported (yellow ramp: with a pad, gray: without, ✕: no ramp) and
+outlines the open corner; tapping another corner, or a **Next** link, opens it. A note
+per corner covers anything else.
+There's no server: checks
+are saved in the browser (`localStorage`, key `trebuche:checks`, shared by every
+street's map) and the corners are redrawn right away for that visitor, with an orange
+check. With location on (the locate button), the panel says whether the phone is at the
+intersection on screen, offers to switch if it's at a different one, opens the report
+when you reach the open corner, and each check
+records how far the phone was from its corner and how precise the fix was (never the
+position itself). A whole walk can go out at once from the **Checks** tab, which opens
+the `.github/ISSUE_TEMPLATE/field-check.yml` issue form (label `field-check`) with every
+field filled in from query parameters (`template=field-check.yml&summary=…&rows=…&map=…`):
+one line per intersection ("ramps both ways at all 4 corners (phone location on site)"),
+a Photos field to drag pictures into (GitHub hosts them; a link can't attach files, so
+this is the one manual step), and the rows as CSV. If the link would
+be too long for GitHub, the rows go on the clipboard to paste instead. **Copy as CSV**
+is there for people without a GitHub account.
+
+To publish them, paste the rows into `data/field-checks.csv` and push:
+
+```
+corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
+dayton-80-NE,2026-11-07,main+cross,yes,,,15,20
+dayton-83-NW,2026-11-07,cross,no,old_style,,,
+```
+
+`ramps_for` names the crossings that had a ramp: `main` (crossing the main street),
+`cross` (crossing the side street), `main+cross`, or `none`. The latest check for a
+corner wins over every other source and sets `overall` (a check that finds no ramp
+counts as confirmed missing), unless SDOT recorded work there after the check.
+`yellow_pad` is `yes`, `no` or blank (not noted). `ramp_issues` lists anything else
+wrong with the ramps, joined with `+`: `old_style` (crisscross grooves), `damaged`,
+`lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
+request text asks SDOT to upgrade the ramp as well as add any missing one.
+`distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
+doesn't use them yet, they're there for whoever reviews the issue. The CSV
+gains `field_*` columns. Once the published data has a check as new as a visitor's own,
+the browser drops its copy.
 
 ## Tracking SDOT requests
 

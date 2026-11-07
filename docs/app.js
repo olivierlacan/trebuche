@@ -112,9 +112,138 @@ function onHoldText(cs) {
 }
 const needsWork = c => c.overall === "missing" || c.overall === "partial";
 
+// ------------------------------------------------------------------ in-person checks
+// Neighbors can record what they see at a corner. Checks stay in this browser
+// (localStorage, shared by every street's map) until they're sent as a GitHub
+// issue and pasted into data/field-checks.csv, after which build.rb publishes them.
+// A saved check redraws the corner for this visitor right away.
+const CHECKS_KEY = "trebuche:checks";
+const needsOf = c => (c.needs || "").split("+").filter(Boolean);
+const coveredBy = rampsFor => (rampsFor === "none" ? [] : (rampsFor || "").split("+").filter(Boolean));
+function loadChecks() {
+  try { return JSON.parse(localStorage.getItem(CHECKS_KEY)) || {}; } catch { return {}; }
+}
+const checks = loadChecks();
+function saveChecks() {
+  try { localStorage.setItem(CHECKS_KEY, JSON.stringify(checks)); }
+  catch { toast("This browser isn't saving checks (private browsing?). Send them before you close the page."); }
+}
+const ORIGINAL = new Map(corners.map(c => [c.corner_id, {
+  overall: c.overall, confirmed_missing: c.confirmed_missing, missing_crossings: c.missing_crossings,
+  sources_disagree: c.sources_disagree, note: c.note,
+}]));
+for (const k of Object.values(checks)) {
+  if (k.pad === "no") k.issues = [...new Set([...(k.issues || "").split("+").filter(Boolean), "no_warning"])].join("+");
+  delete k.pad;
+}
+// Once the published data has the same check (or a newer one), the local copy has done its job.
+for (const c of corners) {
+  const k = checks[c.corner_id];
+  if (k && c.field_date && c.field_date >= k.date) delete checks[c.corner_id];
+}
+saveChecks();
+const myChecks = () => corners.filter(c => checks[c.corner_id]);
+function applyCheck(c) {
+  Object.assign(c, ORIGINAL.get(c.corner_id));
+  const k = checks[c.corner_id];
+  if (!k) return;
+  const gap = needsOf(c).filter(n => !coveredBy(k.ramps_for).includes(n));
+  c.overall = !gap.length ? "present" : gap.length === needsOf(c).length ? "missing" : "partial";
+  c.confirmed_missing = c.overall === "missing" ? "yes" : "";
+  c.missing_crossings = gap.join("+");
+  c.sources_disagree = "";
+  c.note = "";
+}
+corners.forEach(applyCheck);
+function checkText(c, rampsFor) {
+  const covered = coveredBy(rampsFor);
+  return needsOf(c).map(n => `${covered.includes(n) ? "ramp" : "no ramp"} ${crossingName(c, n)}`).join(", ");
+}
+// What's wrong with ramps that are there. Stored as "no_warning+old_style" (ramp_issues column).
+// [checkbox label, words in sentences]
+const RAMP_ISSUES = {
+  no_warning: ["No yellow pad", "no yellow pad"],
+  old_style: ["Older crisscross style", "older crisscross style"],
+  damaged: ["Cracked or uneven", "cracked or uneven"],
+  lip: ["Lip at street edge", "lip at the street edge"],
+};
+const issueList = v => (v || "").split("+").filter(k => RAMP_ISSUES[k]);
+
+// ------------------------------------------------------------------ report icons
+// One small drawing per thing a report can say, in the logo's style: a curb ramp seen
+// from above, the street below it. Fixed colors (concrete, asphalt, yellow pad) read the
+// same in light and dark mode. Decorative: the label next to each says it in words.
+const ICON = { walk: "#d6d4cf", ramp: "#bdbab3", edge: "#7d7a74", street: "#5b5f66", pad: "#f2c200", ink: "#2a2a2a" };
+function rampPlan({ pad = true, outline = !pad, extra = "" } = {}) {
+  const dots = pad ? [12, 16, 20].flatMap(x => [19.4, 21.4].map(y => `<circle cx="${x}" cy="${y}" r=".75" fill="#8a6d00"/>`)).join("") : "";
+  return `<rect width="32" height="23" fill="${ICON.walk}"/><rect y="23" width="32" height="9" fill="${ICON.street}"/>
+    <polygon points="4,23 10,8 22,8 28,23" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
+    ${pad ? `<rect x="9.5" y="18" width="13" height="5" fill="${ICON.pad}" stroke="${ICON.edge}" stroke-width=".5"/>${dots}`
+      : outline ? `<rect x="9.5" y="18" width="13" height="5" fill="none" stroke="${ICON.ink}" stroke-width=".9" stroke-dasharray="1.6 1.2"/>` : ""}
+    ${extra}`;
+}
+function reportIcon(kind, c, n) {
+  let body;
+  if (kind === "ok") {
+    body = rampPlan() + `<circle cx="25.5" cy="6.5" r="5.5" fill="#1a7f45" stroke="#fff" stroke-width="1.2"/>
+      <path d="M22.8,6.6l1.9,1.9l3.6,-3.7" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`;
+  } else if (kind === "miss") {
+    // The street to cross (with its crosswalk) and the ✕ on this corner's curb. Drawn for
+    // a street running across, the corner above or below it; turned a quarter clockwise
+    // for the main street, which moves "above" to the right (east) and "below" to the left.
+    const above = n === "cross" ? c.corner.startsWith("N") : c.corner.endsWith("E");
+    const bars = [9, 13, 17, 21].map(x => `<rect x="${x}" y="11.5" width="2" height="9" fill="#fff" opacity=".85"/>`).join("");
+    const curbY = above ? 10 : 22, xy = above ? 5.5 : 26.5;
+    body = `<rect width="32" height="32" fill="${ICON.walk}"/><rect y="10" width="32" height="12" fill="${ICON.street}"/>${bars}
+      <line x1="0" x2="32" y1="${curbY}" y2="${curbY}" stroke="${ICON.edge}" stroke-width="1.2"/>
+      <path d="M12.5,${xy - 3.5}L19.5,${xy + 3.5}M19.5,${xy - 3.5}L12.5,${xy + 3.5}" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>`;
+    if (n === "main") body = `<g transform="rotate(90 16 16)">${body}</g>`;
+  } else if (kind === "no_warning") {
+    body = rampPlan({ pad: false });
+  } else if (kind === "old_style") {
+    const lines = [-8, -3, 2, 7, 12, 17, 22].map(d => `<path d="M${4 + d},23L${19 + d},8M${4 + d},8L${19 + d},23" stroke="${ICON.edge}" stroke-width=".7"/>`).join("");
+    body = `<defs><clipPath id="ramp-clip"><polygon points="4,23 10,8 22,8 28,23"/></clipPath></defs>` +
+      rampPlan({ pad: false, outline: false, extra: `<g clip-path="url(#ramp-clip)">${lines}</g>` });
+  } else if (kind === "damaged") {
+    body = rampPlan({ extra: `<path d="M11.5,8.5l2.5,3l-2,2.5l4,2.5" fill="none" stroke="${ICON.ink}" stroke-width="1.4" stroke-linejoin="round"/>
+      <path d="M19,9.5l1.5,3l2,1" fill="none" stroke="${ICON.ink}" stroke-width="1"/>` });
+  } else if (kind === "lip") {
+    // Elevation, cropped at the shins: someone walking up from the street, the front toe
+    // stopped by the step where the ramp meets the gutter (red), the back heel lifting,
+    // both legs pitching forward. Back leg and shoe lighter, for depth.
+    const shoe = fill => `<path d="M11,0H2C.4,0 -.3,-1 0,-2.2C.4,-3.6 2.2,-4 4.2,-4.3L7.4,-5.2C8.4,-6.6 9.7,-7 11,-7Z" fill="${fill}"/>
+      <path d="M10.6,-.9H.8" stroke="#fff" stroke-width=".9" opacity=".75"/>`;
+    body = `<rect width="32" height="32" fill="#eef0f2"/>
+      <path d="M0,19L8,23V27H32V32H0Z" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".8"/>
+      <rect x="8" y="27" width="24" height="5" fill="${ICON.street}"/>
+      <path d="M8,22.6V27.4" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M23.4,19L16.5,-1" stroke="#7d93b3" stroke-width="5"/>
+      <g transform="translate(19.5,27) rotate(-28) scale(.9)">${shoe("#6d6d6d")}</g>
+      <path d="M16.4,21.8L12,-1" stroke="#3d5a80" stroke-width="5"/>
+      <g transform="translate(8.2,27) scale(.9)">${shoe(ICON.ink)}</g>
+      <path d="M5,17.5l-2.4,-1.2M5.8,15.1l-1.2,-2.3M8.2,14.3l-.1,-2.6" stroke="${ICON.ink}" stroke-width="1.1" stroke-linecap="round"/>`;
+  }
+  return `<svg class="report-icon" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">${body}</svg>`;
+}
+const issuesText = v => issueList(v).map(k => RAMP_ISSUES[k][1]).join(", ");
+// The ramp issues that apply to a corner: your own check first, then the published one.
+const checkIssues = k => issueList(k.issues).join("+");
+const rampIssues = c => (checks[c.corner_id] ? checkIssues(checks[c.corner_id]) : c.field_issues) || "";
+function upgradeText(c) {
+  if (!issuesText(rampIssues(c)) || c.overall === "missing") return "";
+  const plural = c.overall === "present" && needsOf(c).length > 1;
+  const what = issuesText(rampIssues(c));
+  return `The existing ramp${plural ? "s here: " : " here: "}${what}.` + (issueList(rampIssues(c)).includes("no_warning")
+    ? " Without the yellow pad (detectable warning panel), people who are blind or have low vision can't tell where the sidewalk ends." : "");
+}
+
 // ------------------------------------------------------------------ evidence wording
 function evidence(c) {
   const out = [];
+  const k = checks[c.corner_id];
+  const iss = s => (issuesText(s) ? ` Ramp condition: ${issuesText(s)}.` : "");
+  if (k) out.push(`Checked in person on ${k.date}: ${checkText(c, k.ramps_for)}.${iss(checkIssues(k))}${k.notes ? ` ${k.notes}` : ""}`);
+  else if (c.field_date) out.push(`A neighbor checked in person on ${c.field_date}: ${checkText(c, c.field_covers || "none")}.${iss(c.field_issues)}${c.field_notes ? ` ${c.field_notes}` : ""}`);
   if (c.city === "no record") out.push("SDOT's curb ramp inventory has no ramp recorded at this corner.");
   else if (c.city === "unassessed") out.push("SDOT's inventory only has unassessed placeholder records here (no built ramp).");
   else if (c.city === "partial") out.push("SDOT's inventory shows a ramp for one crossing only.");
@@ -141,7 +270,9 @@ function shareUrl(params) {
 function requestText(c) {
   const lines = [
     `Location: ${cornerTitle(c)}, Seattle, WA (${c.lat}, ${c.lon})`,
-    `Request: ${c.overall === "present" ? "Please check this corner's curb ramps." : "Please install curb ramps at this corner. " + needText(c)}`,
+    `Request: ${c.overall === "present"
+      ? (upgradeText(c) ? `Please upgrade this corner's curb ramps to current standards. ${upgradeText(c)}` : "Please check this corner's curb ramps.")
+      : `Please install curb ramps at this corner. ${needText(c)}${upgradeText(c) ? ` ${upgradeText(c)} Please upgrade it too.` : ""}`}`,
     "",
     "What we know:",
     ...evidence(c).map(e => `- ${e}`),
@@ -173,6 +304,11 @@ function svgFor(k, fill, s, opts = {}) {
   } else {
     parts.push(`<circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="${fill}" stroke="#fff" stroke-width="2"/>`);
     if (k === "partial") parts.push(cross(0.33, Math.max(2, s * 0.12), false));
+  }
+  if (opts.checked) {
+    const cr = Math.max(4, s * 0.22), cx = s - 1, cy = s - 1;
+    parts.push(`<circle cx="${cx}" cy="${cy}" r="${cr}" fill="var(--checked)" stroke="#fff" stroke-width="1.5"/>`,
+      `<path d="M${cx - cr * 0.5},${cy}l${cr * 0.35},${cr * 0.4}l${cr * 0.6},${-cr * 0.75}" fill="none" stroke="#fff" stroke-width="${Math.max(1.5, cr * 0.32)}" stroke-linecap="round" stroke-linejoin="round"/>`);
   }
   if (opts.filed) parts.push(`<circle cx="${s - 1}" cy="1" r="${Math.max(3.5, s * 0.2)}" fill="var(--filed)" stroke="#fff" stroke-width="1.5"/>`);
   if (opts.selected) parts.push(`<rect x="-4" y="-4" width="${s + 8}" height="${s + 8}" rx="4" fill="none" stroke="var(--selected)" stroke-width="2.5"/>`);
@@ -247,6 +383,7 @@ function iconFor(c) {
     className: "m" + (c.corner_id === state.corner ? " current" : ""),
     html: svgFor(kind(c), ageColor(c.city_install_date), s, {
       work: cornerWork(c), filed: !!c.request_filed, selected: state.selected.has(c.corner_id),
+      checked: !!(checks[c.corner_id] || c.field_date),
     }),
     // At least 24 px to tap (WCAG 2.5.8), however small the drawing.
     iconSize: [Math.max(s, 24), Math.max(s, 24)], iconAnchor: [Math.max(s, 24) / 2, Math.max(s, 24) / 2],
@@ -389,15 +526,26 @@ function renderCorner() {
   const selected = state.selected.has(c.corner_id);
   const srcRow = (name, value, extra) => `<tr><th>${name}</th><td>${esc(value)}${extra ? `<br><span class="small">${extra}</span>` : ""}</td></tr>`;
   const wos = (c.work_orders || []).filter(w => workState(w));
+  const mine = checks[c.corner_id];
 
   el.innerHTML = `
     <h2 class="corner-title">${esc(cornerTitle(c))}</h2>
     ${c.corner_type !== "corner" ? `<p class="small">This side of the T-intersection has no side street, so it only needs a ramp for crossing ${MAIN_STREET}.</p>` : ""}
     <p><span class="status ${cls}">${esc(label)}</span>
        ${work ? `<span class="status ${work}">${work === "ongoing" ? "City work this week" : "City work planned"}</span>` : ""}
-       ${c.request_filed ? `<span class="status" style="background:var(--filed)">Request filed</span>` : ""}</p>
+       ${c.request_filed ? `<span class="status" style="background:var(--filed)">Request filed</span>` : ""}
+       ${mine ? `<span class="status" style="background:var(--checked)">You checked this ${esc(mine.date)}</span>`
+         : c.field_date ? `<span class="status" style="background:var(--checked)">Checked in person ${esc(c.field_date)}</span>` : ""}</p>
+    ${mine ? `<p class="small">Shown as you saw it, in this browser only. <button class="link" data-goto="checks">Send your checks</button> so the map is fixed for everyone.</p>` : ""}
     ${needText(c) ? `<p>${esc(needText(c))}</p>` : ""}
+    ${upgradeText(c) ? `<p><span class="status upgrade">Needs upgrade</span> ${esc(upgradeText(c))}</p>` : ""}
     ${c.sources_disagree ? `<p class="small">The sources disagree here${c.note ? `: ${esc(c.note)}` : ""}. Worth a look in person before filing.</p>` : ""}
+
+    <p class="small where" id="check-where">${whereText(c)}</p>
+    <details class="report" data-report ${reportOpen(c) ? "open" : ""}>
+      <summary>${mine ? "Your report on this corner" : "Report what's here"}</summary>
+      ${reportBody(c)}
+    </details>
 
     <div class="buttons">
       <button class="button primary" data-action="copy-request">Copy request text</button>
@@ -424,6 +572,7 @@ function renderCorner() {
         (c.ps_ramp_issues ? `<br>ramp issues: ${esc(c.ps_ramp_issues)}` : ""))}
       ${srcRow("OpenStreetMap", c.osm, c.osm_kerbs ? esc(c.osm_kerbs.replace(/main:/g, `${AREA.short}: `).replace(/cross:/g, "side street: ").replace(/\?:/g, "")) : "")}
       ${workRows(wos)}
+      ${c.field_date ? srcRow("In person", c.field, `checked ${esc(c.field_date)}${c.field_notes ? `: ${esc(c.field_notes)}` : ""}`) : ""}
       ${c.request_filed ? `<tr><th>Request</th><td>Filed ${esc(c.request_date)} ${esc(c.request_ref)} ${esc(c.request_status)}</td></tr>` : ""}
     </table>
 
@@ -441,6 +590,291 @@ document.getElementById("corner-detail").addEventListener("click", e => {
   if (b.dataset.action === "copy-request") copy(requestText(c), "Request text copied");
   if (b.dataset.action === "copy-link") copy(shareUrl({ corner: shortId(c.corner_id) }), "Link copied");
   if (b.dataset.action === "toggle-select") { toggleSelected(c.corner_id); renderCorner(); }
+});
+// ------------------------------------------------------------------ report one corner
+// One corner at a time: the corner open in the panel. Each tick saves right away.
+state.reportOpen = null; // null: open when you've reported this corner or your phone is at it
+function reportOpen(c) {
+  if (state.reportOpen != null) return state.reportOpen;
+  const fix = freshFix();
+  return !!checks[c.corner_id] || !!(fix && map.distance([fix.lat, fix.lng], [c.lat, c.lon]) * FT < ON_SITE_FT);
+}
+const crossShort = (c, n) => (n === "main" ? MAIN_STREET : baseStreet(c));
+
+function reportBody(c) {
+  const k = checks[c.corner_id];
+  const covered = k ? coveredBy(k.ramps_for) : needsOf(c), issues = issueList(k?.issues);
+  const noRamps = !!k && !covered.length;
+  const box = (name, label, on, disabled, icon) => `<label class="check"><input type="checkbox" name="${name}"
+    ${on ? "checked" : ""} ${disabled ? "disabled" : ""}>${icon}<span>${esc(label)}</span></label>`;
+  const siblings = intersectionCorners(c).filter(x => x !== c);
+  const last = siblings.map(x => [x, checks[x.corner_id]]).filter(([, v]) => v).sort((a, b) => (a[1].at || 0) - (b[1].at || 0)).pop();
+  const todo = siblings.filter(x => !checks[x.corner_id]);
+  return `
+    <div class="check-diagram">${checkDiagram(c)}</div>
+    <p><strong>${esc(CORNER_WORDS[c.corner][0].toUpperCase() + CORNER_WORDS[c.corner].slice(1))} corner.</strong>
+      Tick anything missing or wrong. Each tick is saved.</p>
+    <div class="report-list">
+      ${needsOf(c).map(n => box(`miss|${n}`, `No ramp to cross ${crossShort(c, n)}`, !!k && !covered.includes(n), false, reportIcon("miss", c, n))).join("")}
+      ${Object.entries(RAMP_ISSUES).map(([i, [label]]) => box(i, label, issues.includes(i), noRamps, reportIcon(i, c))).join("")}
+    </div>
+    <div class="buttons">
+      <button class="button ${k && k.ramps_for === needsOf(c).join("+") && !issues.length ? "on" : ""}" type="button" data-report-action="ok">${reportIcon("ok", c)}Nothing wrong here</button>
+      ${last && !k ? `<button class="button" type="button" data-report-action="same" data-from="${esc(last[0].corner_id)}">Same as ${esc(last[0].corner)}</button>` : ""}
+      ${k ? `<button class="button" type="button" data-report-action="clear">Clear</button>` : ""}
+    </div>
+    <label class="field">Note (optional)
+      <input type="text" name="notes" maxlength="200" value="${esc(k?.notes || "")}"
+        placeholder="e.g. ramp points into the middle of the intersection"></label>
+    ${freshFix() ? "" : `<p class="small">Tip: turn on your location (the button under the zoom buttons) first, and each
+      report records how far you were from the corner, which shows it was made on site. Only that distance is
+      saved, never your position.</p>`}
+    <p class="small">${k ? `Saved in this browser: ${esc(cornerDescription(c, k))}.` : "Nothing saved for this corner yet."}
+      ${todo.length ? ` Next: ${todo.map(x => `<button class="link" type="button" data-report-corner="${esc(x.corner_id)}">${esc(x.corner)}</button>`).join(", ")}.`
+        : ` Every corner here is done. <button class="link" type="button" data-goto="checks">Send your checks</button>.`}</p>`;
+}
+
+function saveReport(c, { missing = [], issues = [], notes = checks[c.corner_id]?.notes || "" }) {
+  const covered = needsOf(c).filter(n => !missing.includes(n));
+  const ramps_for = covered.length ? covered.join("+") : "none";
+  const old = checks[c.corner_id];
+  checks[c.corner_id] = {
+    date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local
+    ramps_for, issues: ramps_for === "none" ? "" : issues.join("+"), notes,
+    ...(onSite(c) || (old?.distance_ft != null ? { distance_ft: old.distance_ft, accuracy_ft: old.accuracy_ft } : {})),
+    at: Date.now(), // order of saving, for "Same as"
+  };
+  afterReport(c);
+}
+function afterReport(c, focus) {
+  saveChecks();
+  applyCheck(c);
+  refreshMarker(c.corner_id);
+  renderCorner();
+  renderChecks();
+  renderList();
+  if (focus) document.querySelector(`#corner-detail [data-report] [name="${focus}"]`)?.focus();
+}
+function readReport(box) {
+  const els = [...box.querySelectorAll("input[type=checkbox]")];
+  return {
+    missing: els.filter(i => i.checked && i.name.startsWith("miss|")).map(i => i.name.slice(5)),
+    issues: els.filter(i => i.checked && RAMP_ISSUES[i.name]).map(i => i.name),
+    notes: box.querySelector("[name=notes]").value.trim().replace(/\s+/g, " "),
+  };
+}
+const detail = document.getElementById("corner-detail");
+detail.addEventListener("change", e => {
+  const box = e.target.closest("[data-report]");
+  if (!box) return;
+  saveReport(byId.get(state.corner), readReport(box));
+  if (e.target.type === "checkbox") {
+    document.querySelector(`#corner-detail [data-report] [name="${e.target.name}"]`)?.focus();
+    toast(`Saved (${myChecks().length} to send)`);
+  }
+});
+detail.addEventListener("toggle", e => {
+  if (e.target.matches("[data-report]")) state.reportOpen = e.target.open;
+}, true);
+detail.addEventListener("click", e => {
+  const go = e.target.closest("[data-report-corner]");
+  if (go) { state.reportOpen = true; return selectCorner(go.dataset.reportCorner, { pan: false }); }
+  const b = e.target.closest("[data-report-action]");
+  if (!b) return;
+  const c = byId.get(state.corner);
+  if (b.dataset.reportAction === "ok") { saveReport(c, {}); toast("Saved: nothing wrong here"); }
+  if (b.dataset.reportAction === "clear") { delete checks[c.corner_id]; afterReport(c); toast("Cleared"); }
+  if (b.dataset.reportAction === "same") {
+    const k = checks[b.dataset.from], from = byId.get(b.dataset.from);
+    const missing = needsOf(from).filter(n => !coveredBy(k.ramps_for).includes(n)).filter(n => needsOf(c).includes(n));
+    saveReport(c, { missing, issues: issueList(k.issues), notes: k.notes || "" });
+    toast(`Saved, same as ${from.corner}`);
+  }
+});
+
+// With location on, a check records how far the phone was from the corner, and how
+// precise the fix was. Never the position itself.
+const FT = 3.28084;
+function freshFix() {
+  return gps.last && Date.now() - gps.last.at < 120e3 ? gps.last : null;
+}
+function onSite(c) {
+  const fix = freshFix();
+  if (!fix) return null;
+  return { distance_ft: Math.round(map.distance([fix.lat, fix.lng], [c.lat, c.lon]) * FT / 5) * 5,
+           accuracy_ft: Math.round(fix.accuracy * FT / 5) * 5 };
+}
+// Where the phone says you are, compared with the intersection on screen.
+function whereText(c) {
+  const fix = freshFix();
+  if (!fix) return "";
+  const [near, d] = nearestCorner(fix.lat, fix.lng);
+  if (near.intersection_id !== c.intersection_id && d < 450) {
+    return `<strong>Your phone puts you at ${esc(MAIN_STREET)} &amp; ${esc(baseStreet(near))}</strong>, not this intersection.
+      <button class="link" type="button" data-gps-corner="${esc(near.corner_id)}">Check that one instead</button>?`;
+  }
+  const here = Math.min(...intersectionCorners(c).map(x => map.distance([fix.lat, fix.lng], [x.lat, x.lon])));
+  return here * FT < 300
+    ? `📍 You're here (about ${Math.round(here * FT / 10) * 10} ft from the nearest corner). Your reports will say so.`
+    : `Your phone puts you about ${Math.round(here * FT / 10) * 10} ft away, so reports here won't count as on site.`;
+}
+function locatedText(k) {
+  return k.distance_ft != null ? `on site, ${k.distance_ft} ft from the corner (±${k.accuracy_ft} ft)` : "";
+}
+
+function intersectionCorners(c) {
+  const order = ["NW", "NE", "SW", "SE"];
+  return corners.filter(x => x.intersection_id === c.intersection_id)
+    .sort((a, b) => order.indexOf(a.corner) - order.indexOf(b.corner));
+}
+// A plan of the intersection: the main street runs up and down. Each corner has a slot
+// for each ramp it needs, at the curb by its crosswalk: yellow for a ramp with a pad,
+// gray without one, an X for no ramp, dashed until the corner is reported. The open
+// corner is outlined; tapping another corner opens it.
+function checkDiagram(c) {
+  const S = 220, A = 82, B = 138; // street edges
+  const parts = [
+    `<rect width="${S}" height="${S}" fill="var(--soft)"/>`,
+    `<rect x="${A}" width="${B - A}" height="${S}" fill="var(--street)"/>`,
+    `<rect y="${A}" width="${S}" height="${B - A}" fill="var(--street)"/>`,
+    `<text x="${(A + B) / 2}" y="16" text-anchor="middle" class="street-name">${esc(AREA.short)}</text>`,
+    `<text x="10" y="${(A + B) / 2 + 4}" class="street-name">${esc(baseStreet(c).replace(/^[NSEW]+ /, ""))}</text>`,
+  ];
+  for (const x of intersectionCorners(c)) {
+    const west = x.corner.endsWith("W"), north = x.corner.startsWith("N");
+    const cx = west ? A : B, cy = north ? A : B, sx = west ? -1 : 1, sy = north ? -1 : 1;
+    const k = checks[x.corner_id], covered = k ? coveredBy(k.ramps_for) : [], noPad = issueList(k?.issues).includes("no_warning");
+    const current = x.corner_id === c.corner_id;
+    parts.push(`<g data-report-corner="${esc(x.corner_id)}" class="corner">
+      <rect x="${west ? 2 : B + 2}" y="${north ? 2 : B + 2}" width="${A - 4}" height="${A - 4}" rx="6"
+        fill="${k ? "var(--checked-soft)" : "transparent"}" ${current ? 'stroke="var(--checked)" stroke-width="3"' : ""}/>
+      <text x="${west ? A / 2 : B + A / 2}" y="${north ? A / 2 : B + A / 2}" dy=".35em" text-anchor="middle" class="corner-name">${x.corner}</text></g>`);
+    for (const n of needsOf(x)) {
+      // ramp for crossing the side street sits on its curb; for crossing the main street, on the main street's curb
+      const [w, h] = n === "cross" ? [22, 9] : [9, 22];
+      const rx = n === "cross" ? cx + sx * 8 + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -w : 0);
+      const ry = n === "cross" ? cy + (sy < 0 ? -h : 0) : cy + sy * 8 + (sy < 0 ? -h : 0);
+      if (!k) {
+        parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="none" stroke="var(--muted)" stroke-dasharray="3 2"/>`);
+      } else if (!covered.includes(n)) {
+        const mx = rx + w / 2, my = ry + h / 2;
+        parts.push(`<path d="M${mx - 6},${my - 6}L${mx + 6},${my + 6}M${mx + 6},${my - 6}L${mx - 6},${my + 6}" stroke="var(--fg)" stroke-width="3" stroke-linecap="round"/>`);
+      } else {
+        parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="${noPad ? "#9a9a9a" : "#f2c200"}" stroke="var(--fg)" stroke-width="1"/>`);
+      }
+    }
+  }
+  return `<svg viewBox="0 0 ${S} ${S}" width="${S}" height="${S}" role="img"
+      aria-label="Plan of ${esc(MAIN_STREET)} and ${esc(baseStreet(c))}, ${esc(c.corner)} corner selected">${parts.join("")}</svg>
+    <p class="small">Yellow: ramp with a yellow pad. Gray: ramp without one. ✕: no ramp. Tap a corner to report it.</p>`;
+}
+
+// ------------------------------------------------------------------ checks: review + send
+const csvCell = v => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+function checksCsv(cs) {
+  return ["corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft",
+    ...cs.map(c => {
+      const k = checks[c.corner_id];
+      const iss = issueList(k.issues), other = iss.filter(i => i !== "no_warning").join("+");
+      const pad = k.ramps_for === "none" ? "" : iss.includes("no_warning") ? "no" : "yes";
+      return [c.corner_id, k.date, k.ramps_for, pad, other, k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
+    }),
+  ].join("\n");
+}
+// "no ramp east–west, no yellow pad, older crisscross style at all 4 corners; ramps both directions at NE"
+function cornerDescription(c, k) {
+  const covered = coveredBy(k.ramps_for), need = needsOf(c);
+  if (!covered.length) return need.length > 1 ? "no ramps" : "no ramp";
+  const miss = need.filter(n => !covered.includes(n));
+  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : need.length > 1 ? "ramps both ways" : "ramp",
+    ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].join(", ");
+}
+function intersectionSummary(cs) {
+  const byAnswer = new Map();
+  for (const c of cs) {
+    const label = cornerDescription(c, checks[c.corner_id]);
+    byAnswer.set(label, [...(byAnswer.get(label) || []), c.corner]);
+  }
+  const total = intersectionCorners(cs[0]).length;
+  return [...byAnswer].map(([label, where]) =>
+    `${label} ${where.length === total && total > 1 ? `at all ${total} corners` : `at ${where.join(", ")}`}`).join("; ");
+}
+const checkGroups = cs => groupByIntersection(cs).map(g => [`${MAIN_STREET} & ${baseStreet(g[0])}`, g]);
+
+const ON_SITE_FT = 300;
+const onSiteGroup = g => g.some(c => checks[c.corner_id].distance_ft != null && checks[c.corner_id].distance_ft < ON_SITE_FT);
+const groupLine = (name, g) => `${name}: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`;
+
+// Opens .github/ISSUE_TEMPLATE/field-check.yml with every field filled in: each
+// field's id is a query parameter.
+function checksIssueUrl(cs, csvInBody = true) {
+  const groups = checkGroups(cs);
+  const notes = [...new Set(cs.map(c => checks[c.corner_id].notes).filter(Boolean))];
+  const p = new URLSearchParams({
+    template: "field-check.yml",
+    title: `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`,
+    summary: [...groups.map(([name, g]) => `- ${groupLine(name, g)}`), ...notes.map(n => `> ${n}`)].join("\n"),
+    rows: csvInBody ? checksCsv(cs) : "(Too long for a link: paste the rows from your clipboard here.)",
+    map: shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" }),
+  });
+  return `https://github.com/${REPO}/issues/new?${p.toString().replace(/\+/g, "%20")}`;
+}
+
+function renderChecks() {
+  const cs = myChecks();
+  const count = document.getElementById("checks-count");
+  count.hidden = !cs.length;
+  count.textContent = cs.length;
+  const el = document.getElementById("checks-body");
+  if (!cs.length) {
+    el.innerHTML = `<p>No checks saved in this browser. Open a corner on the map and use <strong>Report what's here</strong></p>`;
+    return;
+  }
+  const n = checkGroups(cs).length;
+  el.innerHTML = `
+    <ul class="checks">${checkGroups(cs).map(([name, g]) => {
+      const dates = [...new Set(g.map(c => checks[c.corner_id].date))].join(", ");
+      const sent = g.every(c => checks[c.corner_id].sent) ? ` · sent ${esc(checks[g[0].corner_id].sent)}` : "";
+      const notes = [...new Set(g.map(c => checks[c.corner_id].notes).filter(Boolean))].join(" ");
+      return `<li><button class="link" data-focus-check="${esc(g[0].corner_id)}">${esc(name)}</button><br>
+        <span class="small">${esc(intersectionSummary(g))}${onSiteGroup(g) ? " · 📍 on site" : ""}${notes ? `. ${esc(notes)}` : ""}<br>${esc(dates)}${sent}</span></li>`;
+    }).join("")}</ul>
+    <div class="buttons">
+      <button class="button primary" data-check-action="send">Send ${n === 1 ? "this intersection" : `these ${n} intersections`} on GitHub</button>
+      <button class="button" data-check-action="copy">Copy as CSV</button>
+      <button class="button" data-check-action="forget">Forget all</button>
+    </div>
+    <p class="small">Sending opens a new GitHub issue with your checks filled in (you need a free GitHub account),
+      where you can also add photos. Once they're added to the data, everyone sees the corrected corners and the
+      checks clear here on their own. No GitHub account? Use <strong>Copy as CSV</strong> and send the text to
+      whoever runs this map.</p>`;
+}
+document.getElementById("checks-body").addEventListener("click", e => {
+  const f = e.target.closest("[data-focus-check]");
+  if (f) return selectCorner(f.dataset.focusCheck);
+  const b = e.target.closest("[data-check-action]");
+  if (!b) return;
+  const cs = myChecks();
+  if (b.dataset.checkAction === "copy") copy(checksCsv(cs), "Checks copied as CSV");
+  if (b.dataset.checkAction === "send") {
+    let url = checksIssueUrl(cs);
+    if (url.length > 7500) { // GitHub refuses very long links: put the rows on the clipboard instead
+      url = checksIssueUrl(cs, false);
+      copy(checksCsv(cs), "Checks copied: paste them into the issue");
+    }
+    window.open(url, "_blank", "noopener");
+    const day = new Date().toLocaleDateString("en-CA");
+    cs.forEach(c => { checks[c.corner_id].sent = day; });
+    saveChecks();
+    renderChecks();
+  }
+  if (b.dataset.checkAction === "forget" && confirm(`Forget ${cs.length} check${cs.length > 1 ? "s" : ""} saved in this browser?`)) {
+    cs.forEach(c => { delete checks[c.corner_id]; applyCheck(c); refreshMarker(c.corner_id); });
+    saveChecks();
+    renderChecks();
+    renderList();
+    if (state.corner) renderCorner();
+  }
 });
 
 // ------------------------------------------------------------------ group requests
@@ -478,7 +912,7 @@ function letterText(cs) {
   const missing = cs.filter(c => c.overall === "missing").length;
   const partial = cs.filter(c => c.overall === "partial").length;
   const streets = [...new Set(cs.map(baseStreet))];
-  const onHold = cs.filter(c => (c.sdot_projects || "").includes("on-hold"));
+  const onHold = cs.filter(c => needsWork(c) && (c.sdot_projects || "").includes("on-hold"));
   return [
     "To the Seattle Department of Transportation and our councilmember,",
     "",
@@ -560,7 +994,8 @@ document.getElementById("pane-group").addEventListener("click", e => {
 
 // On-hold project tip
 (() => {
-  const onHold = corners.filter(c => (c.sdot_projects || "").includes("on-hold"));
+  // Corners where the ramps turn out to be built (checked in person) don't need the project restarted.
+  const onHold = corners.filter(c => needsWork(c) && (c.sdot_projects || "").includes("on-hold"));
   if (!onHold.length) return;
   const where = [...new Set(onHold.map(baseStreet))].join(" and ");
   document.getElementById("on-hold-tip").innerHTML =
@@ -577,7 +1012,7 @@ function renderList() {
       <div class="chips">${g.map(c => `
         <button class="chip ${state.selected.has(c.corner_id) ? "sel" : ""}" data-focus="${esc(c.corner_id)}"
           aria-label="${esc(cornerTitle(c))}: ${esc(statusLabel(c)[1])}">
-          ${svgFor(kind(c), ageColor(c.city_install_date), 16, { work: null })}${c.corner}</button>`).join("")}
+          ${svgFor(kind(c), ageColor(c.city_install_date), 16, { work: null, checked: !!(checks[c.corner_id] || c.field_date) })}${c.corner}</button>`).join("")}
       </div>
     </div>`).join("");
 }
@@ -598,6 +1033,7 @@ document.getElementById("corner-list").addEventListener("click", e => {
     li(svgFor("ramp", mid, 18), `Ramps for both crossings (${counts.ramp})`),
     li(svgFor("q", null, 18), `<strong>Not sure</strong>: one source only, sources disagree, or no data (${counts.q})`),
     li(svgFor("ramp", NO_DATE, 18, { filed: true }), `Green dot: a neighbor has filed a request`),
+    li(svgFor("ramp", NO_DATE, 18, { checked: true }), `Orange check: someone looked in person (yours show as you saw them)`),
     li(svgFor("ramp", NO_DATE, 18, { selected: true }), `Blue box: in your group request`),
   ].join("");
   document.getElementById("ramp-bar").style.background =
@@ -627,6 +1063,7 @@ function gpsStop(msg) {
   gps.watch = null;
   gps.following = false;
   gps.layer.clearLayers();
+  gps.last = null;
   gps.button.classList.remove("on");
   gps.button.setAttribute("aria-pressed", "false");
   document.getElementById("gps-status").hidden = true;
@@ -645,6 +1082,7 @@ function nearestCorner(lat, lng) {
 
 function gpsUpdate(pos) {
   const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  gps.last = { lat, lng, accuracy, at: Date.now() }; // in memory only, for "checked on site"
   gps.layer.clearLayers();
   L.circle([lat, lng], { radius: accuracy, color: "#1a73e8", weight: 1, fillOpacity: 0.12, interactive: false }).addTo(gps.layer);
   L.circleMarker([lat, lng], { radius: 7, color: "#fff", weight: 3, fillColor: "#1a73e8", fillOpacity: 1, interactive: false }).addTo(gps.layer);
@@ -652,6 +1090,13 @@ function gpsUpdate(pos) {
     gps.moving = true;
     map.setView([lat, lng], Math.max(map.getZoom(), 19));
     gps.moving = false;
+  }
+  const where = document.getElementById("check-where");
+  if (where && state.corner) where.innerHTML = whereText(byId.get(state.corner));
+  if (where && state.corner && !where.dataset.opened) {
+    // Arriving at the open corner opens its report, once.
+    const c = byId.get(state.corner);
+    if (state.reportOpen == null && reportOpen(c)) { where.dataset.opened = "1"; document.querySelector("#corner-detail [data-report]").open = true; }
   }
   const [c, d] = nearestCorner(lat, lng);
   const el = document.getElementById("gps-status");
@@ -728,5 +1173,6 @@ document.addEventListener("click", e => {
 // ------------------------------------------------------------------ boot
 renderGroup();
 renderList();
+renderChecks();
 if (state.corner) renderCorner();
 showTab(state.tab === "corner" && !state.corner ? "key" : state.tab);
