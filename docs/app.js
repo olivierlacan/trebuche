@@ -162,6 +162,7 @@ function checkText(c, rampsFor) {
 // What's wrong with ramps that are there. Stored as "no_warning+old_style" (ramp_issues column).
 // [checkbox label, words in sentences]
 const RAMP_ISSUES = {
+  diagonal: ["Central ramp facing the middle of the intersection", "one central ramp aimed at the middle of the intersection"],
   no_warning: ["No yellow pad", "no yellow pad"],
   old_style: ["Older crisscross style", "older crisscross style"],
   damaged: ["Cracked or uneven", "cracked or uneven"],
@@ -198,6 +199,19 @@ function reportIcon(kind, c, n) {
       <line x1="0" x2="32" y1="${curbY}" y2="${curbY}" stroke="${ICON.edge}" stroke-width="1.2"/>
       <path d="M12.5,${xy - 3.5}L19.5,${xy + 3.5}M19.5,${xy - 3.5}L12.5,${xy + 3.5}" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round"/>`;
     if (n === "main") body = `<g transform="rotate(90 16 16)">${body}</g>`;
+  } else if (kind === "diagonal") {
+    // A corner from above (sidewalk in the corner's quarter, streets on the other two
+    // sides, a crosswalk across each), with one ramp at the curve aimed at the middle of
+    // the intersection, between the crosswalks. Drawn for NW, turned for the others.
+    const turn = { NW: 0, NE: 90, SE: 180, SW: 270 }[c.corner] || 0;
+    const bars = [19, 23, 27].map(x => `<rect x="${x}" y="2" width="2" height="10" fill="#fff" opacity=".85"/>`).join("") +
+      [19, 23, 27].map(y => `<rect x="2" y="${y}" width="10" height="2" fill="#fff" opacity=".85"/>`).join("");
+    body = `<g transform="rotate(${turn} 16 16)"><rect width="32" height="32" fill="${ICON.street}"/>${bars}
+      <path d="M0,0H15V8A7,7 0 0 1 8,15H0Z" fill="${ICON.walk}" stroke="${ICON.edge}" stroke-width=".9"/>
+      <g transform="rotate(-45 11.5 11.5)"><rect x="7" y="9" width="9" height="6" fill="${ICON.ramp}" stroke="${ICON.edge}" stroke-width=".6"/>
+        <rect x="7" y="13.2" width="9" height="2" fill="${ICON.pad}"/></g>
+      <path d="M17.5,17.5L25,25" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.4 2"/>
+      <path d="M26.6,21.4V26.6H21.4" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>`;
   } else if (kind === "no_warning") {
     body = rampPlan({ pad: false });
   } else if (kind === "old_style") {
@@ -230,11 +244,15 @@ const issuesText = v => issueList(v).map(k => RAMP_ISSUES[k][1]).join(", ");
 const checkIssues = k => issueList(k.issues).join("+");
 const rampIssues = c => (checks[c.corner_id] ? checkIssues(checks[c.corner_id]) : c.field_issues) || "";
 function upgradeText(c) {
-  if (!issuesText(rampIssues(c)) || c.overall === "missing") return "";
+  const list = issueList(rampIssues(c));
+  if (!list.length || c.overall === "missing") return "";
   const plural = c.overall === "present" && needsOf(c).length > 1;
-  const what = issuesText(rampIssues(c));
-  return `The existing ramp${plural ? "s here: " : " here: "}${what}.` + (issueList(rampIssues(c)).includes("no_warning")
-    ? " Without the yellow pad (detectable warning panel), people who are blind or have low vision can't tell where the sidewalk ends." : "");
+  const diagonal = list.includes("diagonal"), rest = list.filter(i => i !== "diagonal").map(i => RAMP_ISSUES[i][1]);
+  let text = diagonal ? "The corner has one central ramp aimed at the middle of the intersection instead of a ramp lined up " +
+    "with each crosswalk, so it sends people toward traffic rather than into the crosswalk." : "";
+  if (rest.length) text += `${diagonal ? " The ramp also has: " : `The existing ramp${plural ? "s here: " : " here: "}`}${rest.join(", ")}.`;
+  if (list.includes("no_warning")) text += " Without the yellow pad (detectable warning panel), people who are blind or have low vision can't tell where the sidewalk ends.";
+  return text.trim();
 }
 
 // ------------------------------------------------------------------ evidence wording
@@ -749,11 +767,21 @@ function checkDiagram(c) {
       <rect x="${west ? 2 : B + 2}" y="${north ? 2 : B + 2}" width="${A - 4}" height="${A - 4}" rx="6"
         fill="${k ? "var(--checked-soft)" : "transparent"}" ${current ? 'stroke="var(--checked)" stroke-width="3"' : ""}/>
       <text x="${west ? A / 2 : B + A / 2}" y="${north ? A / 2 : B + A / 2}" dy=".35em" text-anchor="middle" class="corner-name">${x.corner}</text></g>`);
+    const diagonal = issueList(k?.issues).includes("diagonal");
+    if (diagonal && covered.length) {
+      // one ramp at the apex, aimed at the middle of the intersection
+      const ax = cx + sx * 12, ay = cy + sy * 12, turn = sx === sy ? -45 : 45;
+      parts.push(`<rect x="${ax - 8}" y="${ay - 4}" width="16" height="8" transform="rotate(${turn} ${ax} ${ay})"
+        fill="${noPad ? "#9a9a9a" : "#f2c200"}" stroke="var(--fg)" stroke-width="1"/>`);
+    }
     for (const n of needsOf(x)) {
+      if (diagonal && k && covered.includes(n)) continue; // the apex ramp stands in for it
       // ramp for crossing the side street sits on its curb; for crossing the main street, on the main street's curb
       const [w, h] = n === "cross" ? [22, 9] : [9, 22];
-      const rx = n === "cross" ? cx + sx * 8 + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -w : 0);
-      const ry = n === "cross" ? cy + (sy < 0 ? -h : 0) : cy + sy * 8 + (sy < 0 ? -h : 0);
+      // with a central ramp at the apex, slide the other marks along the curb to clear it
+      const slide = diagonal ? 12 : 0;
+      const rx = n === "cross" ? cx + sx * (8 + slide) + (sx < 0 ? -w : 0) : cx + (sx < 0 ? -w : 0);
+      const ry = n === "cross" ? cy + (sy < 0 ? -h : 0) : cy + sy * (8 + slide) + (sy < 0 ? -h : 0);
       if (!k) {
         parts.push(`<rect x="${rx}" y="${ry}" width="${w}" height="${h}" fill="none" stroke="var(--muted)" stroke-dasharray="3 2"/>`);
       } else if (!covered.includes(n)) {
@@ -786,8 +814,10 @@ function cornerDescription(c, k) {
   const covered = coveredBy(k.ramps_for), need = needsOf(c);
   if (!covered.length) return need.length > 1 ? "no ramps" : "no ramp";
   const miss = need.filter(n => !covered.includes(n));
-  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : need.length > 1 ? "ramps both ways" : "ramp",
-    ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].join(", ");
+  // A central ramp stands in for "ramps both ways": saying both would contradict itself.
+  const central = issueList(k.issues).includes("diagonal");
+  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : central ? "" : need.length > 1 ? "ramps both ways" : "ramp",
+    ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].filter(Boolean).join(", ");
 }
 function intersectionSummary(cs) {
   const byAnswer = new Map();

@@ -355,9 +355,11 @@ intersection, then to a quadrant.
 The sources can be years out of date, so the map lets neighbors record what they see.
 Reports go one corner at a time, the corner open in the panel. Under its status, **Report
 what's here** opens a short checklist for that corner: **No ramp to cross** each street
-it needs a ramp for, **No yellow pad**, **Older crisscross style**, **Cracked or uneven**
-and **Lip at street edge**, each with a small drawing of what to look for (the missing-ramp
-ones show the street to cross and which curb, turned to match the corner). Each tick is
+it needs a ramp for, **Central ramp facing the middle of the intersection** (one ramp at
+the apex instead of one lined up with each crosswalk), **No yellow pad**, **Older
+crisscross style**, **Cracked or uneven** and **Lip at street edge**, each with a small
+drawing of what to look for (the missing-ramp and central-ramp ones are turned to match
+the corner). Each tick is
 saved right away. **Nothing wrong here** records
 a good corner in one tap, and **Same as NW** (the last corner reported at that
 intersection) copies it, so Dayton & N 83rd St, where all four corners have the same
@@ -394,8 +396,10 @@ dayton-83-NW,2026-11-07,cross,no,old_style,,,
 corner wins over every other source and sets `overall` (a check that finds no ramp
 counts as confirmed missing), unless SDOT recorded work there after the check.
 `yellow_pad` is `yes`, `no` or blank (not noted). `ramp_issues` lists anything else
-wrong with the ramps, joined with `+`: `old_style` (crisscross grooves), `damaged`,
-`lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
+wrong with the ramps, joined with `+`: `diagonal` (one central ramp at the apex, aimed at
+the middle of the intersection instead of lined up with each crosswalk, like Standard Plan
+422F; it still counts as a ramp for the crossings it serves), `old_style` (crisscross
+grooves), `damaged`, `lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
 request text asks SDOT to upgrade the ramp as well as add any missing one.
 `distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
 doesn't use them yet, they're there for whoever reviews the issue. The CSV
