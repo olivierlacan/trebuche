@@ -1,0 +1,82 @@
+# When an issue gets the field-check label (people who can label issues get it when they
+# open one from a map; everyone else's are labeled by hand), copy its CSV rows into
+# data/field-checks.csv or data/citywide-checks.csv and open a pull request to review.
+#
+# The issue body is untrusted: it only ever reaches scripts/import_checks.rb as a file
+# (the event payload), never the shell, and the script refuses rows that aren't in the
+# format the pages write. Nothing is merged automatically.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" in the repository's
+# Settings → Actions → General. Editing a labeled issue (to paste rows a long report
+# couldn't fit in its link) runs it again and updates the same pull request.
+name: Report issue to pull request
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: field-check-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: >-
+      github.event.issue.state == 'open' &&
+      contains(github.event.issue.labels.*.name, 'field-check') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'field-check')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE: ${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - name: Copy the rows into the data files
+        id: rows
+        run: |
+          set +e
+          ruby scripts/import_checks.rb --event "$GITHUB_EVENT_PATH" > summary.md
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+          cat summary.md
+      - name: Open a pull request
+        if: steps.rows.outputs.status == '0'
+        run: |
+          branch="field-check/issue-$ISSUE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add data/field-checks.csv data/citywide-checks.csv
+          git commit -m "Reports from #$ISSUE"
+          git push --force -u origin "$branch"
+          {
+            echo "Rows from the in-person report in #$ISSUE:"
+            echo
+            cat summary.md
+            echo
+            echo "Check the rows against the issue (and any photos) before merging. Closes #$ISSUE"
+          } > body.md
+          if gh pr view "$branch" --json state -q .state 2>/dev/null | grep -q OPEN; then
+            gh pr edit "$branch" --body-file body.md
+          else
+            gh pr create --head "$branch" --title "Reports from #$ISSUE" --body-file body.md
+          fi
+      - name: Say what went wrong
+        if: steps.rows.outputs.status != '0' && github.event.action != 'edited'
+        run: |
+          {
+            cat summary.md
+            echo
+            echo "No new rows to import, so no pull request was opened. If this report came from the map or the report page, the rows may have been cut off: edit this issue and paste them from your clipboard (the page copies the whole report), and they'll be picked up."
+            echo
+            echo "---"
+            echo "_Posted by the report import workflow._"
+          } > comment.md
+          gh issue comment "$ISSUE" --body-file comment.md

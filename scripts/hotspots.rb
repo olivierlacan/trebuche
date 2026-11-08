@@ -13,11 +13,17 @@
 # busy cells into hotspots, named after the city's Community Reporting Areas
 # and council districts.
 #
+# Neighbors' in-person reports (data/citywide-checks.csv, from the report page at
+# docs/seattle/report/) are attached to their intersections. A report made on site
+# overrides the inventories: any corner with a ramp means "ramps", and all four
+# corners reported without one means "none".
+#
 # Writes docs/seattle/hotspots/data.js. Raw downloads are cached in
 # data/raw/citywide/ (pass --refresh to download again).
 #
 # Standard library only. Run from the repo root:  ruby scripts/hotspots.rb
 
+require "csv"
 require "fileutils"
 require "json"
 require "net/http"
@@ -38,6 +44,7 @@ UA = "trebuche-curb-ramp-survey/0.1 (neighborhood accessibility project)"
 MATCH_M = 25        # Project Sidewalk intersection / sidewalk end this close counts
 CELL_LAT = 0.004    # grid cell, about 445 m north-south
 CELL_LON = 0.006    # and 450 m east-west at Seattle's latitude
+ON_SITE_FT = 300    # a report saved this close to the intersection was made on site
 HOT_MIN = 6         # a cell with at least this many no-ramp intersections is "hot"
 M_LAT = 111_320.0
 M_LON = 111_320.0 * Math.cos(47.62 * Math::PI / 180)
@@ -192,6 +199,45 @@ def classify(ints, ramps, sidewalks, ps)
   end
 end
 
+# The latest report for each corner of each intersection, grouped by intersection.
+# Columns: intersection_id, intersection, lat, lon, corner (NE/NW/SE/SW), date_checked,
+# ramps_for ("ew", "ns", "ew+ns", "none" or "no_corner"), yellow_pad, ramp_issues, notes,
+# distance_ft, accuracy_ft.
+def load_citywide_checks
+  path = File.join(ROOT, "data", "citywide-checks.csv")
+  return {} unless File.exist?(path)
+
+  CSV.read(path, headers: true).map(&:to_h).reject { _1["intersection_id"].to_s.empty? }
+     .sort_by { _1["date_checked"].to_s }.to_h { [[_1["intersection_id"], _1["corner"]], _1] }
+     .values.group_by { _1["intersection_id"] }
+end
+
+def on_site?(check) = check["distance_ft"].to_s.match?(/\A\d+\z/) && check["distance_ft"].to_i < ON_SITE_FT
+
+def check_issues(check)
+  issues = check["ramp_issues"].to_s.split("+")
+  issues.unshift("no_warning") if check["yellow_pad"].to_s == "no"
+  issues.uniq.join("+")
+end
+
+# Attach reports to their intersections, and let on-site ones decide the status.
+def apply_citywide_checks(rows, checks)
+  code = { "ramps" => 1, "none" => 2, "unknown" => 0 }
+  rows.each do |r|
+    cs = checks[r[:id]] or next
+    on_site = cs.any? { on_site?(_1) }
+    real = cs.reject { _1["ramps_for"] == "no_corner" }
+    field = if real.any? { _1["ramps_for"] != "none" } then "ramps"
+            elsif !real.empty? && cs.map { _1["corner"] }.uniq.size == 4 then "none"
+            end
+    r[:check] = {
+      "d" => cs.map { _1["date_checked"].to_s }.max, "on" => on_site, "was" => code[r[:status]],
+      "c" => cs.sort_by { _1["corner"] }.to_h { [_1["corner"], [_1["ramps_for"].to_s, check_issues(_1)]] },
+    }
+    r[:status] = field if on_site && field
+  end
+end
+
 # type: "CRA" (Community Reporting Area, the city's neighborhood map) or "CD" (council district)
 def neighborhood_lookup(hoods, type)
   indexed = hoods.select { _1["geometry"] && _1["props"]["NEIGH_TYPE"] == type }.map { [_1, bbox_of(_1["geometry"])] }
@@ -289,6 +335,7 @@ end
 def main
   ints, ramps, sidewalks, ps, hoods = fetch(ARGV.include?("--refresh"))
   rows = classify(ints, ramps, sidewalks, ps)
+  apply_citywide_checks(rows, load_citywide_checks)
   hood_of = neighborhood_lookup(hoods, "CRA")
   district_of = neighborhood_lookup(hoods, "CD")
   spots = hotspots(rows, hood_of, district_of)
@@ -296,7 +343,8 @@ def main
 
   FileUtils.mkdir_p(OUT_DIR)
   points = rows.map { [_1[:lat].round(5), _1[:lon].round(5), { "ramps" => 1, "none" => 2, "unknown" => 0 }[_1[:status]],
-                       _1[:sidewalk] == "yes" ? 1 : 0, _1[:streets].map { |s| pretty(s) }.join(" & ")] }
+                       _1[:sidewalk] == "yes" ? 1 : 0, _1[:streets].map { |s| pretty(s) }.join(" & "),
+                       _1[:id], _1[:check] ? (_1[:check]["on"] ? 1 : 2) : 0] }
   data = {
     "generated" => Time.now.utc.iso8601,
     "totals" => {
@@ -306,10 +354,14 @@ def main
       "no_ramp_no_sidewalk" => rows.count { _1[:status] == "none" && _1[:sidewalk] != "yes" },
       "ramps" => rows.count { _1[:status] == "ramps" && _1[:sidewalk] == "yes" },
       "unknown" => rows.count { _1[:status] == "unknown" && _1[:sidewalk] == "yes" },
+      "checked" => rows.count { _1[:check] },
     },
     "cell" => [CELL_LAT, CELL_LON], "hot_min" => HOT_MIN,
     "hotspots" => spots, "neighborhoods" => stats,
     "points" => points,
+    # Neighbors' reports, by SDOT intersection ID: latest date, whether made on site, the
+    # status before the report ("was", coded like points), and each corner's [ramps_for, issues].
+    "checks" => rows.select { _1[:check] }.to_h { [_1[:id], _1[:check]] },
   }
   # A few numbers for pages that link here, without loading every point.
   summary = data["totals"].slice("no_ramp", "with_sidewalk").merge(

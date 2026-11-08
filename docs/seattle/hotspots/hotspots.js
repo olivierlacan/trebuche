@@ -79,21 +79,39 @@ const cellLayer = L.layerGroup([...cells].map(([k, n]) => {
 })).addTo(map);
 
 // Intersections: no-ramp always (black), the rest on request.
-const dot = (st, sw) => st === 2
-  ? { radius: 3.5, color: "#fff", weight: 1, fillColor: sw ? "#111" : "#888", fillOpacity: 1 }
-  : st === 1 ? { radius: 2.5, color: "#1a8a4a", weight: 0, fillColor: "#1a8a4a", fillOpacity: 0.8 }
-  : { radius: 2.5, color: "#999", weight: 0, fillColor: "#999", fillOpacity: 0.7 };
+// Reported by a neighbor: an orange ring, like a checked corner on the street maps.
+const dot = (st, sw, rep) => ({
+  ...(st === 2
+    ? { radius: 3.5, color: "#fff", weight: 1, fillColor: sw ? "#111" : "#888", fillOpacity: 1 }
+    : st === 1 ? { radius: 2.5, color: "#1a8a4a", weight: 0, fillColor: "#1a8a4a", fillOpacity: 0.8 }
+    : { radius: 2.5, color: "#999", weight: 0, fillColor: "#999", fillOpacity: 0.7 }),
+  ...(rep ? { radius: 4.5, color: "#c2410c", weight: 2.5 } : {}),
+});
 const label = st => ["no record either way", "SDOT has recorded ramps", "no curb ramp"][st];
-const mkDots = filter => L.layerGroup(H.points.filter(filter).map(([lat, lon, st, sw, name]) =>
-  L.circleMarker([lat, lon], dot(st, sw)).bindPopup(`<strong>${esc(name)}</strong><br>${label(st)}` +
-    (sw ? "" : "<br><em>no sidewalk recorded here</em>") +
-    `<br><a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}" target="_blank" rel="noopener">Street View</a>`)));
-const noneDots = mkDots(p => p[2] === 2 && p[3]);
-const otherDots = mkDots(p => p[2] !== 2 && p[3]);
+// When an on-site report changed the status, say who found it, not SDOT.
+const statusLine = (id, st) => {
+  const k = H.checks?.[id];
+  return k?.on && k.was !== st ? (st === 1 ? "ramps, found in person" : "no curb ramp, found in person") : label(st);
+};
+const reportedText = id => {
+  const k = H.checks?.[id];
+  return k ? `<br>Reported by a neighbor ${k.on ? "in person" : "(not on site)"} on ${esc(k.d)}` +
+    (k.on && k.was !== undefined ? `; the city's records said: ${label(k.was)}` : "") : "";
+};
+const mkDots = filter => L.layerGroup(H.points.filter(filter).map(([lat, lon, st, sw, name, id, rep]) =>
+  L.circleMarker([lat, lon], dot(st, sw, rep)).bindPopup(`<strong>${esc(name)}</strong><br>${statusLine(id, st)}` +
+    (sw ? "" : "<br><em>no sidewalk recorded here</em>") + reportedText(id) +
+    `<br><a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}" target="_blank" rel="noopener">Street View</a>` +
+    (id != null ? ` · <a href="../report/?int=${encodeURIComponent(id)}">Report this intersection</a>` : ""))));
+// Reported intersections always show, so the rings are there without "show all".
+const noneDots = mkDots(p => p[2] === 2 && (p[3] || p[6]));
+const otherDots = mkDots(p => p[2] !== 2 && p[3] && !p[6]);
+const reportedDots = mkDots(p => p[2] !== 2 && p[6]);
 const DOT_ZOOM = 14;
 const syncDots = () => {
   const z = map.getZoom();
   z >= DOT_ZOOM ? noneDots.addTo(map) : noneDots.remove();
+  z >= DOT_ZOOM ? reportedDots.addTo(map) : reportedDots.remove();
   z >= DOT_ZOOM && document.getElementById("show-all").checked ? otherDots.addTo(map) : otherDots.remove();
 };
 map.on("zoomend", syncDots);
@@ -106,7 +124,7 @@ document.getElementById("show-all").addEventListener("change", e => {
   if (e.target.checked && map.getZoom() < DOT_ZOOM) map.setZoom(DOT_ZOOM);
   syncDots();
 });
-document.getElementById("map-key").textContent = `Zoom in to see intersections: black, no ramp; green, ramps recorded; gray, unknown.`;
+document.getElementById("map-key").textContent = `Zoom in to see intersections: black, no ramp; green, ramps recorded; gray, unknown; orange ring, reported by a neighbor.`;
 document.getElementById("scale-bar").style.background =
   `linear-gradient(to right, ${[0, 0.25, 0.5, 0.75, 1].map(t => cellColor(1 + t * (maxCell - 1))).join(", ")})`;
 document.getElementById("scale-max").textContent = maxCell;

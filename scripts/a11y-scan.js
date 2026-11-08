@@ -16,6 +16,7 @@ const PAGES = [
   ...['phinney-ridge', 'fremont', 'whittier-heights', 'loyal-heights', 'green-lake'].flatMap(s => [`seattle/${s}/`, `seattle/${s}/map.html`]),
   'seattle/phinney-ridge/map.html?corner=79-NE', 'seattle/phinney-ridge/map.html?tab=request',
   'seattle/phinney-ridge/map.html?tab=group&sel=79-NE,79-NW,64W-SW', 'seattle/phinney-ridge/map.html?tab=list',
+  'seattle/report/', 'seattle/report/?int=78852&corner=NE',
 ];
 const only = process.argv[2] ? PAGES.filter(p => p.includes(process.argv[2])) : PAGES;
 (async () => {
