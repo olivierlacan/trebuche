@@ -504,6 +504,31 @@ def apply_field_check(row, check, needs)
   true
 end
 
+# Reports from the citywide report page (data/citywide-checks.csv), for corners this
+# street covers: matched by the SDOT intersection's position (within MATCH_RADIUS_M of
+# one of this street's intersections) and the corner. Those reports say which way each
+# ramp crosses by compass: "ew" (walking east or west) is "main" on a north–south street,
+# "ns" is "cross". "no_corner" rows say nothing about ramps and are skipped. Returned in
+# the same shape as load_field_checks, keyed by corner_id.
+def load_citywide_checks(intersections)
+  path = File.join(ROOT, "data", "citywide-checks.csv")
+  return {} unless File.exist?(path)
+
+  to_street = { "ew" => "main", "ns" => "cross" }
+  CSV.read(path, headers: true).map(&:to_h).sort_by { _1["date_checked"].to_s }.each_with_object({}) do |r, acc|
+    next if r["ramps_for"].to_s == "no_corner" || r["lat"].to_s.empty?
+
+    lat, lon = r["lat"].to_f, r["lon"].to_f
+    ix = intersections.min_by { |i| Math.hypot(*to_xy(lat, lon, i[:lat], i[:lon])) }
+    next unless ix && Math.hypot(*to_xy(lat, lon, ix[:lat], ix[:lon])) < MATCH_RADIUS_M
+
+    ramps = r["ramps_for"] == "none" ? "none" : r["ramps_for"].to_s.split("+").filter_map { to_street[_1] }.sort.join("+")
+    id = "#{$area["id_prefix"]}-#{ix[:id]}-#{r["corner"]}"
+    acc[id] = r.slice("date_checked", "yellow_pad", "ramp_issues", "notes", "distance_ft", "accuracy_ft")
+               .merge("corner_id" => id, "ramps_for" => ramps.empty? ? "none" : ramps)
+  end
+end
+
 def load_requests
   path = File.join(ROOT, "data", "requests.csv")
   return {} unless File.exist?(path)
@@ -565,6 +590,10 @@ def build_area
   positions = precise_positions(intersections, nodes)
   requests = load_requests
   checks = load_field_checks
+  # A street report and a citywide one for the same corner: the newer one wins.
+  load_citywide_checks(intersections).each do |id, k|
+    checks[id] = k if !checks[id] || checks[id]["date_checked"].to_s < k["date_checked"].to_s
+  end
 
   rows = corners.map do |c|
     key = [c["intersection_id"], c["corner"]]

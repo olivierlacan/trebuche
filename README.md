@@ -41,7 +41,9 @@ into ~450 m cells; cells with 6 or more no-ramp intersections are hot, and side-
 cells merge into a hotspot named after the city's Community Reporting Areas and council
 districts. `docs/seattle/hotspots/` shows the map, the ranked hotspots (`?spot=3` links to
 one), and a table by neighborhood with survey coverage. Downloads are cached in
-`data/raw/citywide/`; `--refresh` downloads again (the daily build does).
+`data/raw/citywide/`; `--refresh` downloads again (the daily build does). It also reads
+neighbors' reports from `data/citywide-checks.csv` ([below](#reporting-anywhere-in-seattle)),
+and each intersection in `data.js` carries its SDOT ID so the report page can name it.
 
 ## Outputs
 
@@ -59,13 +61,15 @@ one), and a table by neighborhood with survey coverage. Downloads are cached in
 | Why ramps matter | `docs/why/index.html` | Why curb ramps matter and who uses them, with to-scale drawings: a wheelchair at a bare curb vs. a ramp, common wheel sizes against a 6 in curb, Seattle's armored curbs (with the 1919 Standard Plans' "Curb Armor" and "Concrete Curbing" drawings, `docs/why/1919-*.png`, cropped from the city's scan), the detour when only one side of a crossing has a ramp, and podcasts, video and books to go further. Hand-written, with inline SVG |
 | Seattle | `docs/seattle/index.html` | How to ask Seattle for a ramp, what Seattle's data gets wrong, other Seattle tools, and Seattle's streets |
 | Hotspots | `docs/seattle/hotspots/index.html` | Citywide map and ranking of where missing ramps cluster, and how to organize |
+| Report a corner | `docs/seattle/report/index.html` | Report the curb ramps at any Seattle intersection, from where you're standing ([below](#reporting-anywhere-in-seattle)). Hand-written; reads the hotspot scan's `data.js` |
 | A street | `docs/seattle/<neighborhood>/index.html` | e.g. Phinney Ridge for Dayton Ave N: live counts, the corner strip, goals, how to help |
 | Its map | `docs/seattle/<neighborhood>/map.html` | The street's map (below) |
 
 Screenshots of pages, used in pull requests, live in `screenshots/` (outside `docs/`, so they aren't deployed). Keep them about 1200 px wide.
 
 Shared files live at the top of `docs/`: `logo.svg`, `site.css` (text pages), `style.css`
-and `app.js` (map), `area.js` (a street's landing page), `area-cards.js` (street cards,
+and `app.js` (map), `report-kit.js` (what a report can say about a ramp, and its icons,
+shared by the street maps and the report page), `area.js` (a street's landing page), `area-cards.js` (street cards,
 drawn from the generated `areas.js`). The street pages read their own `data.js`.
 
 Old links keep working: `/?corner=…` and `/map.html?corner=…` (from before the site had
@@ -387,7 +391,8 @@ issues in the repository. `.github/ISSUE_TEMPLATE/field-check.yml` is the same r
 issue form, for people who start from GitHub's **New issue**. **Copy as CSV** is there for
 people without a GitHub account.
 
-To publish them, paste the rows into `data/field-checks.csv` and push:
+To publish them, label the issue `field-check` (see [Importing reports](#importing-reports)),
+or paste the rows into `data/field-checks.csv` and push:
 
 ```
 corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
@@ -409,6 +414,69 @@ request text asks SDOT to upgrade the ramp as well as add any missing one.
 doesn't use them yet, they're there for whoever reviews the issue. The CSV
 gains `field_*` columns. Once the published data has a check as new as a visitor's own,
 the browser drops its copy.
+
+## Reporting anywhere in Seattle
+
+Street pages cover a few streets. `docs/seattle/report/` takes a report from any of the
+13,000 SDOT intersections the hotspot scan knows. **Use my location** finds the
+intersection within 80 m of the phone and opens it; otherwise people zoom in and tap one,
+or follow **Report this intersection** from a dot's popup on the hotspot map
+(`seattle/report/?int=<SDOT id>&corner=NE` links straight to one). The form is the street
+map's (same checklist and drawings, from `report-kit.js`), with two differences, because
+nothing is known about the streets beyond the SDOT point:
+
+- **Corners and crossings are by compass.** NE is the corner northeast of the middle of
+  the intersection, and its two crosswalks are "cross west" and "cross south". Where streets
+  run at an angle, people pick the closest. `ramps_for` says which crossings had a ramp:
+  `ew` (walking east or west), `ns`, `ew+ns`, `none`.
+- **No corner here** (`no_corner`) covers the flat side of a T, or a corner with no sidewalk.
+
+The plan of the intersection is drawn north up. Reports stay in the browser
+(`localStorage`, key `trebuche:citywide-checks`) until **Send**, which opens a GitHub issue
+like the street maps' (labeled `field-check`) with the rows for `data/citywide-checks.csv`:
+
+```
+intersection_id,intersection,lat,lon,corner,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
+13533,Dayton Ave N & N 61st St,47.67317,-122.35287,NE,2026-11-08,ew,no,old_style,,40,15
+```
+
+`lat` and `lon` are the SDOT intersection's own point, not the phone's. `distance_ft` is
+how far the phone was from that point; as on the street maps, the position itself is never
+saved. What the reports change:
+
+- **Hotspot map:** an intersection with a report gets an orange ring and says so in its
+  popup. A report made **on site** (any corner saved under 300 ft away) overrides the
+  inventories: a ramp at any corner makes it "ramps", and all four corners reported
+  without one (`no_corner` counts as reported) make it "no ramp". Reports from farther away
+  are shown but don't change the counts.
+- **Street pages:** `build.rb` matches each report to a street intersection within 30 m and
+  the same corner, turns `ew` into `main` and `ns` into `cross` (every street so far runs
+  north–south), and treats it as a check from `data/field-checks.csv`. When both files have
+  a check for a corner, the newer one wins. So reports made before a street gets a page
+  show up on it from the start.
+
+## Importing reports
+
+`.github/workflows/field-check-pr.yml` turns a report issue into a pull request. When an issue
+has the `field-check` label (it sticks when people who can label issues open one from a map,
+and a maintainer adds it to everyone else's), `scripts/import_checks.rb` finds the CSV rows in
+its body, street (`corner_id,…`) or citywide (`intersection_id,…`), and appends them to the
+right file. Then the workflow opens a pull request that closes the issue. The issue body is
+untrusted, so it only reaches the script as the event's JSON file, never the shell, and every
+row is checked column by column against what the pages write (IDs, dates, the `ramps_for` and
+issue words, Seattle coordinates, notes under 200 characters with no markup). Anything else
+is refused and counted in the pull request, and rows already in the file are skipped. Editing
+the issue (for example, to paste rows a long report couldn't fit in its link) runs it again
+and updates the same pull request. If nothing could be imported, the workflow says so in a
+comment. Nothing is merged automatically: check the rows against the issue and its photos,
+then merge.
+
+```
+ruby scripts/import_checks.rb issue-body.md   # the same, by hand, from a saved issue body
+```
+
+The workflow needs **Allow GitHub Actions to create and approve pull requests** turned on
+in the repository's Settings → Actions → General.
 
 ## Tracking SDOT requests
 
