@@ -438,12 +438,14 @@ const onSiteText = g => {
   return min < ON_SITE_FT ? `on site, about ${min} ft away` : `not on site (about ${min.toLocaleString("en-US")} ft away)`;
 };
 const pageUrl = id => `${location.origin}${location.pathname}?int=${encodeURIComponent(id)}`;
-function issueBody(groups, csvInBody = true) {
+// `keep` trims it to fit a link: "rows" leaves out the summary, "summary" the rows.
+function issueBody(groups, keep = "all") {
   const notes = [...new Set(groups.flat().map(r => r.notes).filter(Boolean))];
   return [
     "<!-- Please don't include your name, phone, or email. -->",
     "",
-    ...groups.map(g => `- **${g[0].name}**: ${summary(g)} (${onSiteText(g)})`),
+    ...(keep === "rows" ? ["(Summary left out to fit the link: the rows below have it all.)"]
+      : groups.map(g => `- **${g[0].name}**: ${summary(g)} (${onSiteText(g)})`)),
     ...(notes.length ? ["", ...notes.map(n => `> ${n}`)] : []),
     "",
     "### Photos (optional)",
@@ -452,19 +454,19 @@ function issueBody(groups, csvInBody = true) {
     "",
     "### Rows for `data/citywide-checks.csv`",
     "",
-    ...(csvInBody ? ["```csv", rowsCsv(groups), "```"] : ["(Too long for a link: paste the report from your clipboard here.)"]),
+    ...(keep !== "summary" ? ["```csv", rowsCsv(groups), "```"] : ["(Too long for a link: paste the report from your clipboard here.)"]),
     "",
     ...groups.map(g => `Map: ${pageUrl(g[0].id)}`),
   ].join("\n");
 }
 function issueUrl(groups) {
   const title = `Checked in person: ${groups.map(g => g[0].name).join("; ")}`.slice(0, 200);
-  const build = csvIn => {
-    const q = new URLSearchParams({ title, body: issueBody(groups, csvIn), labels: "field-check" });
+  const build = keep => {
+    const q = new URLSearchParams({ title, body: issueBody(groups, keep), labels: "field-check" });
     return `https://github.com/${REPO}/issues/new?${q.toString().replace(/\+/g, "%20")}`;
   };
-  const full = build(true);
-  return full.length < 7000 ? full : build(false);
+  // drop the summary before the rows, which are what gets imported
+  return ["all", "rows", "summary"].map(build).find(u => u.length < 7000) ?? build("summary");
 }
 
 function renderMine() {

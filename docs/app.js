@@ -773,13 +773,16 @@ const onSiteGroup = g => g.some(c => checks[c.corner_id].distance_ft != null && 
 // Opens .github/ISSUE_TEMPLATE/field-check.yml with every field filled in: each
 // field's id is a query parameter.
 // The whole report as Markdown: the issue's body, and what Send copies to the clipboard.
-function checksIssueBody(cs, csvInBody = true) {
+// `keep` trims it to fit a link: "rows" leaves out the per-intersection summary (the rows
+// are what gets imported, and the map link shows the same thing), "summary" the rows.
+function checksIssueBody(cs, keep = "all") {
   const groups = checkGroups(cs);
   const notes = [...new Set(cs.map(c => checks[c.corner_id].notes).filter(Boolean))];
   return [
     "<!-- Please don't include your name, phone, or email. -->",
     "",
-    ...groups.map(([name, g]) => `- **${name}**: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`),
+    ...(keep === "rows" ? ["(Summary left out to fit the link: the rows below and the map link have it all.)"]
+      : groups.map(([name, g]) => `- **${name}**: ${intersectionSummary(g)}${onSiteGroup(g) ? " (phone location on site)" : ""}`)),
     ...(notes.length ? ["", ...notes.map(n => `> ${n}`)] : []),
     "",
     "### Photos (optional)",
@@ -788,7 +791,7 @@ function checksIssueBody(cs, csvInBody = true) {
     "",
     "### Rows for `data/field-checks.csv`",
     "",
-    ...(csvInBody ? ["```csv", checksCsv(cs), "```"] : ["(Too long for a link: paste the rows from your clipboard here.)"]),
+    ...(keep !== "summary" ? ["```csv", checksCsv(cs), "```"] : ["(Too long for a link: paste the rows from your clipboard here.)"]),
     "",
     `Map: ${shareUrl({ sel: selParam(cs.map(c => c.corner_id)), tab: "group" })}`,
   ].join("\n");
@@ -796,11 +799,11 @@ function checksIssueBody(cs, csvInBody = true) {
 // A plain title + body link: the GitHub app (which phones open these links in) ignores
 // issue-form fields, and some versions ignore the body too, so Send also copies the body.
 // The label sticks only for people who can label issues; the rest are labeled by hand.
-function checksIssueUrl(cs, csvInBody = true) {
+function checksIssueUrl(cs, keep = "all") {
   const groups = checkGroups(cs);
   const p = new URLSearchParams({
     title: `Checked in person: ${MAIN_STREET} & ${groups.map(([, g]) => baseStreet(g[0])).join(", ")}`,
-    body: checksIssueBody(cs, csvInBody),
+    body: checksIssueBody(cs, keep),
     labels: "field-check",
   });
   return `https://github.com/${REPO}/issues/new?${p.toString().replace(/\+/g, "%20")}`;
@@ -843,8 +846,8 @@ document.getElementById("checks-body").addEventListener("click", e => {
   const cs = myChecks();
   if (b.dataset.checkAction === "copy") copy(checksCsv(cs), "Checks copied as CSV");
   if (b.dataset.checkAction === "send") {
-    let url = checksIssueUrl(cs);
-    if (url.length > 7500) url = checksIssueUrl(cs, false); // GitHub refuses very long links
+    // GitHub refuses very long links: drop the summary before the rows, which are what gets imported
+    const url = ["all", "rows", "summary"].map(k => checksIssueUrl(cs, k)).find(u => u.length <= 7500) ?? checksIssueUrl(cs, "summary");
     // Copy the full report (even when the link had to leave the rows out) before opening GitHub:
     // once the new tab has focus, this page can't write the clipboard.
     navigator.clipboard?.writeText(checksIssueBody(cs)).catch(() => {});

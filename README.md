@@ -385,8 +385,9 @@ a Photos section to drag pictures into (GitHub hosts them; a link can't attach f
 this is the one manual step), the rows as CSV, and a map link. On phones the link often
 opens in the GitHub app, which ignores a prefilled body, so **Send** also copies the whole
 report: if the issue comes up empty, paste. (**I filed this** and **We filed these** copy
-their text the same way.) If the link would be too long for GitHub, the rows are left out
-of it and only the clipboard has them. The label sticks only for people who can label
+their text the same way.) If the link would be too long for GitHub, the per-intersection
+summary is left out first (the rows are what gets imported); only if it's still too long are
+the rows left out too, and then only the clipboard has them. The label sticks only for people who can label
 issues in the repository. `.github/ISSUE_TEMPLATE/field-check.yml` is the same report as an
 issue form, for people who start from GitHub's **New issue**. **Copy as CSV** is there for
 people without a GitHub account.
