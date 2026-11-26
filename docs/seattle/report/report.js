@@ -257,7 +257,9 @@ function renderPanel() {
         ${["ew", "ns"].map(n => box(`miss|${n}`, `No ramp to cross ${crossDir(c, n)}`, !!k && !noCorner && !covered.includes(n), noCorner,
           reportIcon("miss", fake, ICON_N[n]))).join("")}
         ${Object.entries(RAMP_ISSUES).map(([i, [label]]) => box(i, esc(label), issues.includes(i), noRamps, reportIcon(i, fake))).join("")}
+        ${box("built", esc(NEWLY_BUILT[0]), !!k?.built, noRamps, reportIcon("new", fake))}
       </div>
+      <p class="small">Tick <strong>Newly built</strong> if the ramps here look new, even if the city's records don't show them.</p>
       <div class="buttons">
         <button class="button ${k && k.ramps_for === "ew+ns" && !issues.length ? "on" : ""}" type="button" data-action="ok">${reportIcon("ok", fake)}Nothing wrong here</button>
         ${last && !k ? `<button class="button" type="button" data-action="same" data-from="${last.corner}">Same as ${last.corner}</button>` : ""}
@@ -266,7 +268,7 @@ function renderPanel() {
       <label class="field">Note (optional)
         <input type="text" name="notes" maxlength="200" value="${esc(k?.notes || "")}" placeholder="e.g. a pole blocks the ramp"></label>
     </form>
-    <p class="small">${k ? `Saved in this browser: ${esc(describe(c, k.ramps_for, k.issues))}.` : "Nothing saved for this corner yet."}
+    <p class="small">${k ? `Saved in this browser: ${esc(describe(c, k.ramps_for, k.issues, k.built))}.` : "Nothing saved for this corner yet."}
       ${todo.length ? `Next: ${todo.map(x => `<button class="link" type="button" data-corner="${x}">${x}</button>`).join(", ")}.`
         : `Every corner here is done. <a href="#mine-h">Send your reports</a>.`}</p>`;
   renderWhere();
@@ -324,18 +326,18 @@ function planSvg(p) {
 }
 
 // "no ramp to cross west, no yellow pad"
-function describe(corner, ramps, issues) {
+function describe(corner, ramps, issues, built = false) {
   if (ramps === "no_corner") return "no corner";
   const covered = coveredBy(ramps), list = issueList(issues);
   if (!covered.length) return "no ramps";
   const miss = ["ew", "ns"].filter(n => !covered.includes(n));
   const central = list.includes("diagonal");
-  return [miss.length ? miss.map(n => `no ramp to cross ${crossDir(corner, n)}`).join(", ") : central ? "" : "ramps both ways",
+  return [built ? NEWLY_BUILT[1] : "", miss.length ? miss.map(n => `no ramp to cross ${crossDir(corner, n)}`).join(", ") : central ? "" : "ramps both ways",
     ...list.map(i => RAMP_ISSUES[i][1])].filter(Boolean).join(", ");
 }
 
 // ------------------------------------------------------------ saving
-function save(p, corner, { missing = [], issues = [], noCorner = false, notes }) {
+function save(p, corner, { missing = [], issues = [], noCorner = false, notes, built }) {
   const old = saved[keyOf(p.id, corner)];
   const covered = ["ew", "ns"].filter(n => !missing.includes(n));
   const ramps_for = noCorner ? "no_corner" : covered.length ? covered.join("+") : "none";
@@ -344,6 +346,7 @@ function save(p, corner, { missing = [], issues = [], noCorner = false, notes })
     date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local
     ramps_for, issues: ramps_for === "none" || noCorner ? "" : issues.join("+"),
     notes: notes ?? old?.notes ?? "",
+    ...((built ?? old?.built) && ramps_for !== "none" && !noCorner ? { built: true } : {}),
     ...(onSite(p) || (old?.distance_ft != null ? { distance_ft: old.distance_ft, accuracy_ft: old.accuracy_ft } : {})),
     at: Date.now(),
   };
@@ -362,6 +365,7 @@ function readForm(form) {
     noCorner: els.some(i => i.checked && i.name === "no_corner"),
     missing: els.filter(i => i.checked && i.name.startsWith("miss|")).map(i => i.name.slice(5)),
     issues: els.filter(i => i.checked && RAMP_ISSUES[i.name]).map(i => i.name),
+    built: els.some(i => i.checked && i.name === "built"),
     notes: form.querySelector("[name=notes]").value.trim().replace(/\s+/g, " "),
   };
 }
@@ -400,14 +404,14 @@ document.addEventListener("click", e => {
   if (b.dataset.action === "same") {
     const from = saved[keyOf(p.id, b.dataset.from)];
     const missing = ["ew", "ns"].filter(n => !coveredBy(from.ramps_for).includes(n));
-    save(p, c, { missing, issues: issueList(from.issues), notes: from.notes });
+    save(p, c, { missing, issues: issueList(from.issues), notes: from.notes, built: !!from.built });
     toast(`Saved, same as ${b.dataset.from}`);
   }
 });
 
 // ------------------------------------------------------------ your reports + send
 const csvCell = v => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-const HEADER = "intersection_id,intersection,lat,lon,corner,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft";
+const HEADER = "intersection_id,intersection,lat,lon,corner,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft,newly_built";
 function byIntersection() {
   const groups = new Map();
   for (const r of Object.values(saved).sort((a, b) => a.at - b.at)) groups.set(r.id, [...(groups.get(r.id) || []), r]);
@@ -419,14 +423,14 @@ function rowsCsv(groups) {
     const iss = issueList(r.issues), other = iss.filter(i => i !== "no_warning").join("+");
     const hasRamp = coveredBy(r.ramps_for).length > 0;
     const pad = !hasRamp ? "" : iss.includes("no_warning") ? "no" : "yes";
-    return [r.id, r.name, r.lat, r.lon, r.corner, r.date, r.ramps_for, pad, other, r.notes || "", r.distance_ft ?? "", r.accuracy_ft ?? ""]
+    return [r.id, r.name, r.lat, r.lon, r.corner, r.date, r.ramps_for, pad, other, r.notes || "", r.distance_ft ?? "", r.accuracy_ft ?? "", r.built ? "yes" : ""]
       .map(csvCell).join(",");
   })].join("\n");
 }
 function summary(g) {
   const byText = new Map();
   for (const r of g) {
-    const t = describe(r.corner, r.ramps_for, r.issues);
+    const t = describe(r.corner, r.ramps_for, r.issues, r.built);
     byText.set(t, [...(byText.get(t) || []), r.corner]);
   }
   return [...byText].map(([t, cs]) => `${t} at ${cs.length === 4 ? "all 4 corners" : cs.join(", ")}`).join("; ");

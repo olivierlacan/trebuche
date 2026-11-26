@@ -27,20 +27,21 @@ PAD = ->(v) { ["", "yes", "no"].include?(v) }
 LIST = ->(v) { v.empty? || v.split("+").all? { ISSUES.include?(_1) } }
 NOTES = ->(v) { v.length <= 200 && !v.match?(/[\r\n<>]/) }
 OPT_FEET = ->(v) { v.empty? || v.match?(FEET) }
+YES = ->(v) { ["", "yes"].include?(v) }
 
 KINDS = {
   "field-checks.csv" => {
-    header: %w[corner_id date_checked ramps_for yellow_pad ramp_issues notes distance_ft accuracy_ft],
+    header: %w[corner_id date_checked ramps_for yellow_pad ramp_issues notes distance_ft accuracy_ft newly_built],
     rules: {
       "corner_id" => ->(v) { v.match?(/\A[a-z][a-z0-9]*-\d+[A-Z]?-(NE|NW|SE|SW)\z/) },
       "date_checked" => ->(v) { v.match?(DATE) },
       "ramps_for" => ->(v) { %w[none main cross main+cross].include?(v) },
       "yellow_pad" => PAD, "ramp_issues" => LIST, "notes" => NOTES,
-      "distance_ft" => OPT_FEET, "accuracy_ft" => OPT_FEET,
+      "distance_ft" => OPT_FEET, "accuracy_ft" => OPT_FEET, "newly_built" => YES,
     },
   },
   "citywide-checks.csv" => {
-    header: %w[intersection_id intersection lat lon corner date_checked ramps_for yellow_pad ramp_issues notes distance_ft accuracy_ft],
+    header: %w[intersection_id intersection lat lon corner date_checked ramps_for yellow_pad ramp_issues notes distance_ft accuracy_ft newly_built],
     rules: {
       "intersection_id" => ->(v) { v.match?(/\A\d{1,9}\z/) },
       "intersection" => ->(v) { v.match?(/\A[A-Za-z0-9 .&'\/-]{3,80}\z/) },
@@ -51,29 +52,36 @@ KINDS = {
       "date_checked" => ->(v) { v.match?(DATE) },
       "ramps_for" => ->(v) { %w[none no_corner ew ns ew+ns].include?(v) },
       "yellow_pad" => PAD, "ramp_issues" => LIST, "notes" => NOTES,
-      "distance_ft" => OPT_FEET, "accuracy_ft" => OPT_FEET,
+      "distance_ft" => OPT_FEET, "accuracy_ft" => OPT_FEET, "newly_built" => YES,
     },
   },
 }.freeze
 
+# Columns added since the pages first wrote reports. A report written before one was added
+# (an issue opened from an older copy of a page) has the header without it, and its rows
+# get the column blank.
+ADDED = %w[newly_built].freeze
+
 # The CSV in the body: a header line the pages write, then rows up to a blank line or
-# the end of a code fence. Works whether or not the rows are fenced.
+# the end of a code fence. Works whether or not the rows are fenced. Returns the header
+# the body used, so older rows can be filled out.
 def extract(body)
   lines = body.gsub("\r\n", "\n").lines(chomp: true)
   KINDS.filter_map do |file, kind|
-    start = lines.index { _1.strip == kind[:header].join(",") }
+    headers = (0..ADDED.size).map { |n| kind[:header][0, kind[:header].size - n] }
+    start, used = lines.each_with_index.filter_map { |l, i| (h = headers.find { l.strip == _1.join(",") }) && [i, h] }.first
     next unless start
 
     rows = lines[(start + 1)..].take_while { !_1.strip.empty? && !_1.strip.start_with?("```") }
-    [file, kind, rows.join("\n")]
+    [file, kind, rows.join("\n"), used]
   end
 end
 
-def valid_rows(kind, text)
+def valid_rows(kind, text, used = kind[:header])
   good, bad = [], []
   CSV.parse(text).each do |cells|
-    row = kind[:header].zip(cells.map { _1.to_s.strip }).to_h
-    ok = cells.size == kind[:header].size && kind[:rules].all? { |col, rule| rule.(row[col].to_s) } &&
+    row = kind[:header].zip(cells.map { _1.to_s.strip } + [""] * (kind[:header].size - used.size)).to_h
+    ok = cells.size == used.size && kind[:rules].all? { |col, rule| rule.(row[col].to_s) } &&
          Date.parse(row["date_checked"]) <= Date.today + 1
     (ok ? good : bad) << row
   rescue Date::Error
@@ -97,10 +105,10 @@ def main
   end
 
   added = 0
-  found.each do |file, kind, text|
+  found.each do |file, kind, text, used|
     path = File.join(ROOT, "data", file)
-    existing = File.exist?(path) ? CSV.read(path, headers: true).map { _1.to_h.transform_values(&:to_s) } : []
-    good, bad = valid_rows(kind, text)
+    existing = File.exist?(path) ? CSV.read(path, headers: true).map { |r| kind[:header].to_h { |h| [h, r[h].to_s] } } : []
+    good, bad = valid_rows(kind, text, used)
     fresh = good.uniq.reject { |r| existing.any? { _1 == r } }
     File.write(path, "#{kind[:header].join(",")}\n") unless File.exist?(path)
     CSV.open(path, "a", row_sep: "\n") { |csv| fresh.each { |r| csv << kind[:header].map { r[_1].empty? ? nil : r[_1] } } }

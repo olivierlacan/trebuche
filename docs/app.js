@@ -178,6 +178,21 @@ function upgradeText(c) {
   return text.trim();
 }
 
+// "SDOT recorded new ramps here (2026-09-10). Nobody has checked them in person yet."
+// From build.rb's changelog entry for the corner (data.js "built"); your own unsent
+// "Newly built" tick counts as a neighbor's.
+const builtById = new Map((DATA.built || []).map(b => [b.corner_id, b]));
+function builtText(c) {
+  const b = builtById.get(c.corner_id), mine = checks[c.corner_id]?.built;
+  if (!b && !mine) return "";
+  const city = b?.city_install_date ? `SDOT recorded new ramps here (${b.city_date_approx ? b.city_install_date.slice(0, 4) : b.city_install_date})`
+    : b?.work_closed ? `SDOT closed its work order here (${b.work_closed}), but its inventory doesn't show a new ramp yet` : "";
+  const seen = mine ? "You reported it as newly built" : b?.seen ? `A neighbor saw it newly built (${b.seen})` : "";
+  if (city && seen) return `${city}. ${seen}.`;
+  if (city) return `${city}. Nobody has checked it in person yet: if you're there, report what's here.`;
+  return `${seen}. SDOT's records don't show it yet.`;
+}
+
 // ------------------------------------------------------------------ evidence wording
 function evidence(c) {
   const out = [];
@@ -491,6 +506,7 @@ function renderCorner() {
        ${mine ? `<span class="status" style="background:var(--checked)">You checked this ${esc(mine.date)}</span>`
          : c.field_date ? `<span class="status" style="background:var(--checked)">Checked in person ${esc(c.field_date)}</span>` : ""}</p>
     ${mine ? `<p class="small">Shown as you saw it, in this browser only. <button class="link" data-goto="checks">Send your checks</button> so the map is fixed for everyone.</p>` : ""}
+    ${builtText(c) ? `<p><span class="status built">Recently built</span> ${esc(builtText(c))} <a href="./#built-h">All recent construction</a></p>` : ""}
     ${needText(c) ? `<p>${esc(needText(c))}</p>` : ""}
     ${upgradeText(c) ? `<p><span class="status upgrade">Needs upgrade</span> ${esc(upgradeText(c))}</p>` : ""}
     ${c.sources_disagree ? `<p class="small">The sources disagree here${c.note ? `: ${esc(c.note)}` : ""}. Worth a look in person before filing.</p>` : ""}
@@ -571,7 +587,10 @@ function reportBody(c) {
     <div class="report-list">
       ${needsOf(c).map(n => box(`miss|${n}`, `No ramp to cross ${crossShort(c, n)}`, !!k && !covered.includes(n), false, reportIcon("miss", c, n))).join("")}
       ${Object.entries(RAMP_ISSUES).map(([i, [label]]) => box(i, label, issues.includes(i), noRamps, reportIcon(i, c))).join("")}
+      ${box("built", NEWLY_BUILT[0], !!k?.built, noRamps, reportIcon("new", c))}
     </div>
+    <p class="small">Tick <strong>Newly built</strong> if the ramps here are new since the map says, even if the city
+      hasn't recorded them yet. It puts the corner on the street's <a href="./#built-h">Recently built</a> list.</p>
     <div class="buttons">
       <button class="button ${k && k.ramps_for === needsOf(c).join("+") && !issues.length ? "on" : ""}" type="button" data-report-action="ok">${reportIcon("ok", c)}Nothing wrong here</button>
       ${last && !k ? `<button class="button" type="button" data-report-action="same" data-from="${esc(last[0].corner_id)}">Same as ${esc(last[0].corner)}</button>` : ""}
@@ -588,13 +607,14 @@ function reportBody(c) {
         : ` Every corner here is done. <button class="link" type="button" data-goto="checks">Send your checks</button>.`}</p>`;
 }
 
-function saveReport(c, { missing = [], issues = [], notes = checks[c.corner_id]?.notes || "" }) {
+function saveReport(c, { missing = [], issues = [], notes = checks[c.corner_id]?.notes || "", built = !!checks[c.corner_id]?.built }) {
   const covered = needsOf(c).filter(n => !missing.includes(n));
   const ramps_for = covered.length ? covered.join("+") : "none";
   const old = checks[c.corner_id];
   checks[c.corner_id] = {
     date: new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local
     ramps_for, issues: ramps_for === "none" ? "" : issues.join("+"), notes,
+    ...(built && ramps_for !== "none" ? { built: true } : {}),
     ...(onSite(c) || (old?.distance_ft != null ? { distance_ft: old.distance_ft, accuracy_ft: old.accuracy_ft } : {})),
     at: Date.now(), // order of saving, for "Same as"
   };
@@ -614,6 +634,7 @@ function readReport(box) {
   return {
     missing: els.filter(i => i.checked && i.name.startsWith("miss|")).map(i => i.name.slice(5)),
     issues: els.filter(i => i.checked && RAMP_ISSUES[i.name]).map(i => i.name),
+    built: els.some(i => i.checked && i.name === "built"),
     notes: box.querySelector("[name=notes]").value.trim().replace(/\s+/g, " "),
   };
 }
@@ -641,7 +662,7 @@ detail.addEventListener("click", e => {
   if (b.dataset.reportAction === "same") {
     const k = checks[b.dataset.from], from = byId.get(b.dataset.from);
     const missing = needsOf(from).filter(n => !coveredBy(k.ramps_for).includes(n)).filter(n => needsOf(c).includes(n));
-    saveReport(c, { missing, issues: issueList(k.issues), notes: k.notes || "" });
+    saveReport(c, { missing, issues: issueList(k.issues), notes: k.notes || "", built: !!k.built });
     toast(`Saved, same as ${from.corner}`);
   }
 });
@@ -736,12 +757,12 @@ function checkDiagram(c) {
 // ------------------------------------------------------------------ checks: review + send
 const csvCell = v => (/[",\n]/.test(v) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 function checksCsv(cs) {
-  return ["corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft",
+  return ["corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft,newly_built",
     ...cs.map(c => {
       const k = checks[c.corner_id];
       const iss = issueList(k.issues), other = iss.filter(i => i !== "no_warning").join("+");
       const pad = k.ramps_for === "none" ? "" : iss.includes("no_warning") ? "no" : "yes";
-      return [c.corner_id, k.date, k.ramps_for, pad, other, k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? ""].map(csvCell).join(",");
+      return [c.corner_id, k.date, k.ramps_for, pad, other, k.notes || "", k.distance_ft ?? "", k.accuracy_ft ?? "", k.built ? "yes" : ""].map(csvCell).join(",");
     }),
   ].join("\n");
 }
@@ -752,7 +773,8 @@ function cornerDescription(c, k) {
   const miss = need.filter(n => !covered.includes(n));
   // A central ramp stands in for "ramps both ways": saying both would contradict itself.
   const central = issueList(k.issues).includes("diagonal");
-  return [miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : central ? "" : need.length > 1 ? "ramps both ways" : "ramp",
+  return [k.built ? NEWLY_BUILT[1] : "",
+    miss.length ? miss.map(n => `no ramp to cross ${crossShort(c, n)}`).join(", ") : central ? "" : need.length > 1 ? "ramps both ways" : "ramp",
     ...issueList(k.issues).map(i => RAMP_ISSUES[i][1])].filter(Boolean).join(", ");
 }
 function intersectionSummary(cs) {

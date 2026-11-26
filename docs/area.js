@@ -117,6 +117,11 @@ function jogNote() {
     (jogs.length ? `; ${list} ${jogs.length > 1 ? "are" : "is"} the two halves of ${AREA.short}'s jog${jogs.length > 1 ? "s" : ""}` : "") + `.</li>`;
 }
 
+// ------------------------------------------------------------ recently built
+renderBuiltLog(document.getElementById("built-log"),
+  (DATA.built_log || []).map(e => ({ ...e, street: AREA.street, map: "map.html" })),
+  { days: DATA.built_days, summaryEl: document.getElementById("built-summary") });
+
 // ------------------------------------------------------------ freshness
 const gen = (DATA.generated || "").slice(0, 10);
 document.getElementById("refreshed").textContent =

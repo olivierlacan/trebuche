@@ -20,6 +20,7 @@
           <span><strong>${a.one_crossing}</strong> one crossing only</span>
           <span><strong>${a.both_crossings}</strong> fully ramped</span>
           ${a.requests_filed ? `<span><strong>${a.requests_filed}</strong> requests filed</span>` : ""}
+          ${a.built_recently ? `<span><strong>${a.built_recently}</strong> recently built</span>` : ""}
         </span>
         <span class="go">See ${esc(a.street)} →</span>
       </a>`).join(""));

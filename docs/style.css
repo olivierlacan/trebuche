@@ -123,6 +123,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid 
 .status.partial { background: #b2651a; }
 .status.upgrade { background: #8a6d00; }
 .status.present { background: #1a8a4a; }
+.status.built { background: #1a7f45; }
 .status.unsure { background: #6b6b6b; }
 .status.planned { background: var(--planned); }
 .status.ongoing { background: var(--ongoing); }

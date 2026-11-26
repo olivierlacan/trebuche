@@ -57,6 +57,16 @@
     <ul class="legend" id="legend"></ul>
   </section>
 
+  <section class="wrap" aria-labelledby="built-h">
+    <h2 id="built-h">Recently built</h2>
+    <p class="section-lede" id="built-summary">Curb ramps built on <%= esc[a["short"]] %> in the last 12 months.</p>
+    <div id="built-log"></div>
+    <p class="small">Each entry says who vouches for it. <strong>SDOT's records</strong>: a ramp in the city's inventory with a
+      recent install date, or a ramp work order the city closed (closing one doesn't always mean it was built).
+      <strong>In person</strong>: a neighbor's report from the map with <strong>Newly built</strong> ticked, which counts even
+      when the city hasn't recorded the work. When both agree, the entry says <strong>Confirmed</strong>.</p>
+  </section>
+
   <section class="wrap" aria-labelledby="goals-h">
     <h2 id="goals-h">Our goals</h2>
     <p class="section-lede">The end goal is simple: <strong>every corner on <%= esc[a["street"]] %> from <%= esc[a["extent"]] %> has a curb ramp for both crossings.</strong> Getting there takes four steps.</p>
@@ -158,6 +168,7 @@
 </footer>
 
 <script src="data.js"></script>
+<script src="../../built-log.js"></script>
 <script src="../../area.js"></script>
 </body>
 </html>

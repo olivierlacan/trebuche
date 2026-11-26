@@ -51,6 +51,15 @@
     </div>
   </section>
 
+  <section class="wrap" id="built" aria-labelledby="built-h">
+    <h2 id="built-h">Recently built</h2>
+    <p class="section-lede" id="built-summary">Curb ramps built on our streets in the last 12 months.</p>
+    <div id="built-log"></div>
+    <p class="small">Each entry says who vouches for it: SDOT's records (a recent install date in its ramp inventory, or a
+      ramp work order it closed), a neighbor who saw it in person and reported it as <strong>Newly built</strong>, or both.
+      Seen new ramps somewhere else in the city? <a href="report/">Report the corner</a> and tick Newly built.</p>
+  </section>
+
   <section class="wrap" id="ask" aria-labelledby="ask-h">
     <h2 id="ask-h">How to ask Seattle for a curb ramp</h2>
     <p class="section-lede">Seattle has two channels, and which one fits depends on who's asking.
@@ -196,5 +205,16 @@
 
 <script src="../areas.js"></script>
 <script src="../area-cards.js"></script>
+<script src="../built-log.js"></script>
+<script>
+  // Every Seattle street's recent construction, newest first.
+  (() => {
+    const areas = (window.AREAS || []).filter(a => a.city_slug === "seattle");
+    const entries = areas.flatMap(a => (a.built || []).map(e => ({ ...e, street: a.street, area: a.name, map: `${a.slug}/map.html` })))
+      .sort((x, y) => y.date.localeCompare(x.date));
+    renderBuiltLog(document.getElementById("built-log"), entries,
+      { days: areas[0]?.built_days || 365, summaryEl: document.getElementById("built-summary") });
+  })();
+</script>
 </body>
 </html>

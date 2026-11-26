@@ -9,14 +9,76 @@ window.AREAS = [
     "extent": "N 60th to N 85th St",
     "note": "Started by neighbors on Phinney Ridge.",
     "path": "seattle/phinney-ridge/",
-    "generated": "2026-11-04T10:45:35Z",
+    "generated": "2026-11-26T18:56:34Z",
     "corners": 108,
     "intersections": 27,
-    "no_ramp": 58,
-    "one_crossing": 17,
-    "both_crossings": 20,
+    "no_ramp": 54,
+    "one_crossing": 18,
+    "both_crossings": 24,
     "on_hold": 9,
-    "requests_filed": 0
+    "requests_filed": 0,
+    "built_recently": 8,
+    "built_days": 365,
+    "built": [
+      {
+        "intersection_id": "79",
+        "cross_street": "N 79th St",
+        "date": "2026-11-07",
+        "corners": [
+          "NE",
+          "NW",
+          "SE",
+          "SW"
+        ],
+        "corner_ids": [
+          "dayton-79-NE",
+          "dayton-79-NW",
+          "dayton-79-SE",
+          "dayton-79-SW"
+        ],
+        "statuses": {
+          "neighbor": 4
+        },
+        "city_corners": 0,
+        "city_from": "",
+        "city_to": "",
+        "city_date_approx": "",
+        "work_corners": 0,
+        "work_closed": "",
+        "seen_corners": 4,
+        "seen": "2026-11-07",
+        "still_needed": 0
+      },
+      {
+        "intersection_id": "63",
+        "cross_street": "N 63rd St",
+        "date": "2026-09-17",
+        "corners": [
+          "NE",
+          "NW",
+          "SE",
+          "SW"
+        ],
+        "corner_ids": [
+          "dayton-63-NE",
+          "dayton-63-NW",
+          "dayton-63-SE",
+          "dayton-63-SW"
+        ],
+        "statuses": {
+          "city": 4
+        },
+        "city_corners": 4,
+        "city_from": "2026-08-25",
+        "city_to": "2026-09-17",
+        "city_date_approx": "",
+        "work_corners": 0,
+        "work_closed": "",
+        "seen_corners": 0,
+        "seen": "",
+        "still_needed": 0
+      }
+    ]
   },
   {
     "city": "Seattle",
@@ -27,14 +89,45 @@ window.AREAS = [
     "extent": "NW 40th to NW 54th St",
     "note": "Found by Trebuche's citywide scan: SDOT records no built ramp at any intersection from NW 40th to NW 54th St.",
     "path": "seattle/fremont/",
-    "generated": "2026-11-04T10:45:35Z",
+    "generated": "2026-11-26T18:55:02Z",
     "corners": 72,
     "intersections": 18,
     "no_ramp": 37,
     "one_crossing": 2,
     "both_crossings": 8,
     "on_hold": 0,
-    "requests_filed": 0
+    "requests_filed": 0,
+    "built_recently": 3,
+    "built_days": 365,
+    "built": [
+      {
+        "intersection_id": "49",
+        "cross_street": "NW 49th St",
+        "date": "2026-01-01",
+        "corners": [
+          "NW",
+          "SE",
+          "SW"
+        ],
+        "corner_ids": [
+          "2nd-nw-49-NW",
+          "2nd-nw-49-SE",
+          "2nd-nw-49-SW"
+        ],
+        "statuses": {
+          "city": 3
+        },
+        "city_corners": 3,
+        "city_from": "2026-01-01",
+        "city_to": "2026-01-01",
+        "city_date_approx": "year",
+        "work_corners": 0,
+        "work_closed": "",
+        "seen_corners": 0,
+        "seen": "",
+        "still_needed": 0
+      }
+    ]
   },
   {
     "city": "Seattle",
@@ -45,14 +138,19 @@ window.AREAS = [
     "extent": "NW 60th to NW 80th St",
     "note": "Found by Trebuche's citywide scan: long runs of intersections with no built ramp in SDOT's records, and Project Sidewalk labels of missing ramps at nearly all of them.",
     "path": "seattle/whittier-heights/",
-    "generated": "2026-11-04T10:45:36Z",
+    "generated": "2026-11-26T18:55:02Z",
     "corners": 52,
     "intersections": 13,
     "no_ramp": 35,
     "one_crossing": 10,
     "both_crossings": 0,
     "on_hold": 0,
-    "requests_filed": 0
+    "requests_filed": 0,
+    "built_recently": 0,
+    "built_days": 365,
+    "built": [
+
+    ]
   },
   {
     "city": "Seattle",
@@ -63,14 +161,19 @@ window.AREAS = [
     "extent": "NW 59th to NW 83rd St",
     "note": "Found by Trebuche's citywide scan: most intersections from NW 59th to NW 83rd St have no built ramp in SDOT's records.",
     "path": "seattle/loyal-heights/",
-    "generated": "2026-11-04T10:45:36Z",
+    "generated": "2026-11-26T18:55:02Z",
     "corners": 80,
     "intersections": 20,
     "no_ramp": 58,
     "one_crossing": 0,
     "both_crossings": 6,
     "on_hold": 0,
-    "requests_filed": 0
+    "requests_filed": 0,
+    "built_recently": 0,
+    "built_days": 365,
+    "built": [
+
+    ]
   },
   {
     "city": "Seattle",
@@ -81,13 +184,18 @@ window.AREAS = [
     "extent": "NE 75th to NE 91st St",
     "note": "Found by Trebuche's citywide scan: SDOT records no built ramp at any intersection north of NE 75th St except one corner of NE 82nd.",
     "path": "seattle/green-lake/",
-    "generated": "2026-11-04T10:45:36Z",
+    "generated": "2026-11-26T18:55:02Z",
     "corners": 44,
     "intersections": 11,
     "no_ramp": 22,
     "one_crossing": 2,
-    "both_crossings": 3,
+    "both_crossings": 2,
     "on_hold": 3,
-    "requests_filed": 0
+    "requests_filed": 0,
+    "built_recently": 0,
+    "built_days": 365,
+    "built": [
+
+    ]
   }
 ];

@@ -247,19 +247,25 @@ def built?(r) = %w[SINGLE SHARED].include?(blank(r["CATEGORY"]))
 
 WORK_TYPES = ["Planned Construction", "Customer Service Request Curb Ramp"].freeze
 RECENT_CLOSE_DAYS = 45
+# How far back "Recently built" looks: city install dates, closed work orders and
+# neighbors' "newly built" reports this recent make the street's changelog.
+RECENT_BUILT_DAYS = 365
+
+def days_ago(n) = Time.at(Time.now.to_i - n * 86_400).utc.strftime("%F")
 
 # SDOT curb ramp work orders that are open, or closed recently enough that the
 # map might call them "ongoing" this week. Planned vs. ongoing is decided in
 # the browser against the viewer's current date, so the site doesn't go stale
 # between rebuilds.
-def work_orders
-  cutoff = Time.at(Time.now.to_i - RECENT_CLOSE_DAYS * 86_400).utc.strftime("%F")
+def work_orders(close_days = RECENT_CLOSE_DAYS, closed_only: false)
+  cutoff = days_ago(close_days)
   load("city_work_orders.geojson")["features"].filter_map do |f|
     a = f["properties"]
     next unless WORK_TYPES.include?(a["PROBLEMDESC"]) && a["CANCELLEDFLAG"] != "Y" && f["geometry"]
 
     closed = ms_to_date(a["CLOSEDDT"])
     next if !closed.empty? && closed < cutoff
+    next if closed_only && closed.empty?
 
     lon, lat = f["geometry"]["coordinates"]
     {
@@ -460,7 +466,8 @@ end
 # yellow_pad is "yes", "no" or blank: whether the ramps have a detectable warning panel.
 # ramp_issues says what else is wrong with them ("diagonal", "old_style", "damaged", "lip", joined
 # with "+"); a "no" yellow_pad adds "no_warning" to field_issues. distance_ft and accuracy_ft (phone location when saved) are
-# kept for review, not used here.
+# kept for review, not used here. newly_built is "yes" when the neighbor saw new construction:
+# it puts the corner in the street's "Recently built" changelog, even before the city records it.
 def load_field_checks
   path = File.join(ROOT, "data", "field-checks.csv")
   return {} unless File.exist?(path)
@@ -492,7 +499,8 @@ def apply_field_check(row, check, needs)
   row.merge!("field" => status, "field_covers" => covers, "field_date" => date,
              "field_issues" => status == "missing" ? "" : field_issues(check),
              "field_yellow_pad" => status == "missing" ? "" : check["yellow_pad"].to_s,
-             "field_notes" => check["notes"].to_s)
+             "field_notes" => check["notes"].to_s,
+             "field_newly_built" => status == "missing" ? "" : check["newly_built"].to_s)
   city_seen = row["city_last_observed"].to_s
   return false if !city_seen.empty? && city_seen > date
 
@@ -524,7 +532,7 @@ def load_citywide_checks(intersections)
 
     ramps = r["ramps_for"] == "none" ? "none" : r["ramps_for"].to_s.split("+").filter_map { to_street[_1] }.sort.join("+")
     id = "#{$area["id_prefix"]}-#{ix[:id]}-#{r["corner"]}"
-    acc[id] = r.slice("date_checked", "yellow_pad", "ramp_issues", "notes", "distance_ft", "accuracy_ft")
+    acc[id] = r.slice("date_checked", "yellow_pad", "ramp_issues", "notes", "distance_ft", "accuracy_ft", "newly_built")
                .merge("corner_id" => id, "ramps_for" => ramps.empty? ? "none" : ramps)
   end
 end
@@ -547,7 +555,8 @@ FIELDS = %w[
   ps ps_ramp_labels ps_noramp_labels ps_validated
   ps_ramp_max_severity ps_ramp_issues ps_image_date ps_label_ids
   osm osm_kerbs osm_last_edit osm_node_ids
-  field field_covers field_date field_yellow_pad field_issues field_notes
+  field field_covers field_date field_yellow_pad field_issues field_notes field_newly_built
+  built_recently built_date built_evidence
   request_filed request_date request_ref request_status
 ].freeze
 
@@ -577,6 +586,71 @@ def missing_crossings(row, needs)
   end
 end
 
+# The street's changelog: corners where something was built in the last RECENT_BUILT_DAYS,
+# and who says so. The city's word is a ramp in its inventory installed in that time, or a
+# curb ramp work order it closed in that time (closing an order doesn't always mean it was
+# built, so that one alone asks for a look). A neighbor's word is an in-person report
+# ticked "Newly built". Either can come first; the entry says which ones agree.
+#
+#   confirmed    city record and a neighbor's report
+#   city         SDOT install date, nobody has looked yet
+#   work_closed  SDOT closed a work order here, but its inventory has no new ramp
+#   neighbor     a neighbor saw it, SDOT hasn't recorded it yet
+def recent_build(row, closed)
+  since = days_ago(RECENT_BUILT_DAYS)
+  installed = row["city_install_date"].to_s
+  installed = "" if installed < since
+  closed = closed.select { _1["closed"] >= since }.sort_by { _1["closed"] }
+  seen = row["field_newly_built"] == "yes" && row["field_date"].to_s >= since ? row["field_date"] : ""
+  return nil if installed.empty? && closed.empty? && seen.empty?
+
+  status = if !seen.empty? && (!installed.empty? || closed.any?) then "confirmed"
+           elsif !installed.empty? then "city"
+           elsif closed.any? then "work_closed"
+           else "neighbor"
+           end
+  {
+    "corner_id" => row["corner_id"], "intersection_id" => row["intersection_id"],
+    "cross_street" => row["cross_street"], "corner" => row["corner"], "overall" => row["overall"],
+    "status" => status,
+    "date" => [installed, closed.last&.dig("closed").to_s, seen].reject(&:empty?).min,
+    "city_install_date" => installed,
+    # 23 of Seattle's ~1,200 dated ramps here say January 1, on records made years before,
+    # with no installer: a year, not a day.
+    "city_date_approx" => installed.end_with?("-01-01") ? "year" : "",
+    "work_closed" => closed.last&.dig("closed").to_s,
+    "work_ids" => closed.map { _1["id"] }.uniq.join(" "),
+    "work_project" => closed.map { _1["project"] }.uniq.reject(&:empty?).join("; "),
+    "seen" => seen,
+    "seen_notes" => seen.empty? ? "" : row["field_notes"].to_s,
+  }
+end
+
+# The changelog as people read it: one entry per intersection, newest first, saying what
+# SDOT's records and neighbors each say about its corners. Shared by the street's page
+# (data.js) and the city page (areas.js), drawn by docs/built-log.js.
+def built_log(built)
+  built.group_by { _1["intersection_id"] }.map do |id, bs|
+    installs = bs.map { _1["city_install_date"] }.reject(&:empty?).sort
+    {
+      "intersection_id" => id,
+      "cross_street" => bs.first["cross_street"].sub(/\s*\(.*\)\z/, ""),
+      "date" => bs.map { _1["date"] }.max,
+      "corners" => bs.map { _1["corner"] }.sort,
+      "corner_ids" => bs.map { _1["corner_id"] }.sort,
+      "statuses" => bs.map { _1["status"] }.tally,
+      "city_corners" => bs.count { !_1["city_install_date"].empty? },
+      "city_from" => installs.first.to_s, "city_to" => installs.last.to_s,
+      "city_date_approx" => bs.any? { _1["city_date_approx"] == "year" } ? "year" : "",
+      "work_corners" => bs.count { !_1["work_closed"].empty? && _1["city_install_date"].empty? },
+      "work_closed" => bs.map { _1["work_closed"] }.max.to_s,
+      "seen_corners" => bs.count { !_1["seen"].empty? },
+      "seen" => bs.map { _1["seen"] }.max.to_s,
+      "still_needed" => bs.count { %w[missing partial].include?(_1["overall"]) },
+    }
+  end.sort_by { _1["date"] }.reverse
+end
+
 def build_area
   nodes, ways = load_osm
   intersections = find_intersections(nodes, ways)
@@ -587,6 +661,7 @@ def build_area
   osm = osm_evidence(nodes, ways, intersections, needs)
   orders = work_orders
   wo = work_order_evidence(intersections, orders)
+  closed = assign(work_orders(RECENT_BUILT_DAYS, closed_only: true).map { [_1["lat"], _1["lon"], _1] }, intersections)
   positions = precise_positions(intersections, nodes)
   requests = load_requests
   checks = load_field_checks
@@ -595,6 +670,7 @@ def build_area
     checks[id] = k if !checks[id] || checks[id]["date_checked"].to_s < k["date_checked"].to_s
   end
 
+  built = []
   rows = corners.map do |c|
     key = [c["intersection_id"], c["corner"]]
     row = FIELDS.to_h { [_1, ""] }
@@ -611,6 +687,13 @@ def build_area
     if (req = requests[c["corner_id"]])
       row.merge!("request_filed" => "yes", "request_date" => req["date_filed"].to_s,
                  "request_ref" => req["sdot_reference"].to_s, "request_status" => req["status"].to_s)
+    end
+    if (b = recent_build(row, closed.fetch(key, [])))
+      row.merge!("built_recently" => b["status"], "built_date" => b["date"],
+                 "built_evidence" => [("SDOT install #{b["city_install_date"]}" unless b["city_install_date"].empty?),
+                                      ("SDOT closed #{b["work_ids"]} #{b["work_closed"]}" unless b["work_closed"].empty?),
+                                      ("seen by a neighbor #{b["seen"]}" unless b["seen"].empty?)].compact.join("; "))
+      built << b
     end
     row
   end
@@ -643,6 +726,9 @@ def build_area
     "corners" => rows,
     "city_ramps" => city_ramp_points,
     "work_orders" => orders,
+    "built_days" => RECENT_BUILT_DAYS,
+    "built" => built.sort_by { [_1["date"], _1["corner_id"]] }.reverse,
+    "built_log" => built_log(built),
   }
   FileUtils.mkdir_p($area_dir)
   File.write(File.join($area_dir, "data.js"),
@@ -656,6 +742,7 @@ def build_area
   puts "overall: #{rows.map { _1["overall"] }.tally}"
   puts "sources disagree: #{rows.count { !_1["sources_disagree"].empty? }}"
   %w[city ps osm].each { |s| puts "  #{s}: #{rows.map { _1[s] }.tally}" }
+  puts "recently built: #{built.map { _1["status"] }.tally}"
 
   # Small per-area summary for the home and city pages (so they don't have to
   # load every corner).
@@ -669,6 +756,9 @@ def build_area
     "both_crossings" => rows.count { _1["overall"] == "present" },
     "on_hold" => rows.count { _1["sdot_projects"].to_s.include?("on-hold") },
     "requests_filed" => rows.count { _1["request_filed"] == "yes" },
+    "built_recently" => built.size,
+    "built_days" => RECENT_BUILT_DAYS,
+    "built" => built_log(built),
   )
 end
 

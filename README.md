@@ -77,7 +77,7 @@ sections) forward to the Dayton Ave N map with the same parameters.
 
 **Street landing page:** what the effort is for and its goals, live counts of missing and
 partial corners, a strip showing every corner from 60th to 85th (each links into the map),
-how neighbors can help, and why the site combines three sources. Its numbers come from the
+what was [recently built](#recently-built), how neighbors can help, and why the site combines three sources. Its numbers come from the
 same `data.js` as the map, so they update with the daily refresh.
 
 **Map:** a static Leaflet map plus a side panel (below the map on phones):
@@ -363,7 +363,7 @@ it needs a ramp for, **Central ramp facing the middle of the intersection** (one
 the apex instead of one lined up with each crosswalk), **No yellow pad**, **Older
 crisscross style**, **Cracked or uneven** and **Lip at street edge**, each with a small
 drawing of what to look for (the missing-ramp and central-ramp ones are turned to match
-the corner). Each tick is
+the corner), and **Newly built** for ramps that are new (see [Recently built](#recently-built)). Each tick is
 saved right away. **Nothing wrong here** records
 a good corner in one tap, and **Same as NW** (the last corner reported at that
 intersection) copies it, so Dayton & N 83rd St, where all four corners have the same
@@ -395,9 +395,10 @@ To publish them, label the issue `field-check` (see [Importing reports](#importi
 or paste the rows into `data/field-checks.csv` and push:
 
 ```
-corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
-dayton-80-NE,2026-11-07,main+cross,yes,,,15,20
-dayton-83-NW,2026-11-07,cross,no,old_style,,,
+corner_id,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft,newly_built
+dayton-80-NE,2026-11-07,main+cross,yes,,,15,20,
+dayton-83-NW,2026-11-07,cross,no,old_style,,,,
+dayton-79-NE,2026-11-07,main+cross,,,New ramps at all four corners,,,yes
 ```
 
 `ramps_for` names the crossings that had a ramp: `main` (crossing the main street),
@@ -410,6 +411,8 @@ the middle of the intersection instead of lined up with each crosswalk, like Sta
 422F; it still counts as a ramp for the crossings it serves), `old_style` (crisscross
 grooves), `damaged`, `lip`. A `no` pad (Standard Plan 422k requires one) or any issue makes the corner say **Needs upgrade**, and their
 request text asks SDOT to upgrade the ramp as well as add any missing one.
+`newly_built` is `yes` when the neighbor ticked **Newly built**, blank otherwise; it's
+ignored when the check found no ramp.
 `distance_ft` and `accuracy_ft` are blank for checks saved without location; the build
 doesn't use them yet, they're there for whoever reviews the issue. The CSV
 gains `field_*` columns. Once the published data has a check as new as a visitor's own,
@@ -436,8 +439,8 @@ The plan of the intersection is drawn north up. Reports stay in the browser
 like the street maps' (labeled `field-check`) with the rows for `data/citywide-checks.csv`:
 
 ```
-intersection_id,intersection,lat,lon,corner,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft
-13533,Dayton Ave N & N 61st St,47.67317,-122.35287,NE,2026-11-08,ew,no,old_style,,40,15
+intersection_id,intersection,lat,lon,corner,date_checked,ramps_for,yellow_pad,ramp_issues,notes,distance_ft,accuracy_ft,newly_built
+13533,Dayton Ave N & N 61st St,47.67317,-122.35287,NE,2026-11-08,ew,no,old_style,,40,15,
 ```
 
 `lat` and `lon` are the SDOT intersection's own point, not the phone's. `distance_ft` is
@@ -455,13 +458,43 @@ saved. What the reports change:
   a check for a corner, the newer one wins. So reports made before a street gets a page
   show up on it from the start.
 
+## Recently built
+
+Each street page has a **Recently built** changelog, and the Seattle page combines every
+street's: one entry per intersection where something was built in the last 12 months
+(`RECENT_BUILT_DAYS` in `build.rb`), newest first, each saying who vouches for it:
+
+- **SDOT's records:** a ramp in the city's inventory whose `INSTALL_DATE` falls in that
+  window, or, weaker, a curb ramp work order SDOT closed in that window (closing one doesn't
+  always mean the ramp was built, so the entry says the inventory doesn't show it yet).
+  About 2% of install dates are January 1 on records made years earlier, with no installer;
+  those are shown as a year only.
+- **In person:** a neighbor's report with **Newly built** ticked (`newly_built=yes` in
+  either checks file). This is how construction the city hasn't recorded gets on the list,
+  through the same issue and pull request review as every other report.
+
+An entry with both says **Confirmed**. One with only the city's word links to the corner
+so someone nearby can check it; one with only a neighbor's says SDOT hasn't recorded it
+yet, and confirms itself when SDOT's inventory catches up on a later daily build. A corner on
+the list also says so in its map panel. In the data, each street's `data.js` has `built`
+(per corner) and `built_log` (per intersection, drawn by `docs/built-log.js`), `areas.js`
+has each street's `built` log and `built_recently` count, and `corners.csv` gains
+`field_newly_built`, `built_recently` (`confirmed`, `city`, `work_closed` or `neighbor`),
+`built_date` and `built_evidence`.
+
+As of the 2026-11-26 data: Dayton & N 63rd St (all four corners, SDOT installs
+August–September 2026, not yet checked in person), Dayton & N 79th St (all four corners,
+seen by a neighbor November 7, not yet in SDOT's inventory) and 2nd Ave NW & NW 49th St
+(three corners, SDOT gives 2026 only).
+
 ## Importing reports
 
 `.github/workflows/field-check-pr.yml` turns a report issue into a pull request. When an issue
 has the `field-check` label (it sticks when people who can label issues open one from a map,
 and a maintainer adds it to everyone else's), `scripts/import_checks.rb` finds the CSV rows in
 its body, street (`corner_id,…`) or citywide (`intersection_id,…`), and appends them to the
-right file. Then the workflow opens a pull request that closes the issue. The issue body is
+right file. Reports from before the `newly_built` column (an issue opened from an older copy of
+a page) are still read, with the column left blank. Then the workflow opens a pull request that closes the issue. The issue body is
 untrusted, so it only reaches the script as the event's JSON file, never the shell, and every
 row is checked column by column against what the pages write (IDs, dates, the `ramps_for` and
 issue words, Seattle coordinates, notes under 200 characters with no markup). Anything else

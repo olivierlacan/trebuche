@@ -12,6 +12,9 @@ const RAMP_ISSUES = {
   lip: ["Lip at street edge", "lip at the street edge"],
 };
 const issueList = v => (v || "").split("+").filter(k => RAMP_ISSUES[k]);
+// Not something wrong: new construction. Its own column (newly_built), so a corner the city
+// rebuilt can join the street's "Recently built" list before SDOT's records catch up.
+const NEWLY_BUILT = ["Newly built", "newly built"];
 
 // ------------------------------------------------------------------ report icons
 // One small drawing per thing a report can say, in the logo's style: a curb ramp seen
@@ -55,6 +58,9 @@ function reportIcon(kind, c, n) {
       <path d="M14.26,8.67L16.6,8.85A11,11 0 0 1 8.85,16.6L8.67,14.26A8.7,8.7 0 0 0 14.26,8.67Z" fill="${ICON.pad}"/>
       <path d="M17.5,17.5L25,25" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="2.4 2"/>
       <path d="M26.6,21.4V26.6H21.4" fill="none" stroke="#c0392b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+  } else if (kind === "new") {
+    // A fresh ramp with its pad, and a small four-point spark: just finished.
+    body = rampPlan() + `<path d="M25.5,0.8L26.9,5.1L31.2,6.5L26.9,7.9L25.5,12.2L24.1,7.9L19.8,6.5L24.1,5.1Z" fill="#1a7f45" stroke="#fff" stroke-width=".9" stroke-linejoin="round"/>`;
   } else if (kind === "no_warning") {
     body = rampPlan({ pad: false });
   } else if (kind === "old_style") {
